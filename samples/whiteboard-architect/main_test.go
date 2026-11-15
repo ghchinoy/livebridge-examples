@@ -30,7 +30,7 @@ import (
 	"github.com/ghchinoy/livebridge"
 )
 
-func TestWhiteboardArchitect_RelaysCanvasSnapshotBeforeToolResponse(t *testing.T) {
+func TestWhiteboardArchitect_GetBoardAndVisualCanvasRelay(t *testing.T) {
 	sess := &boardFakeSession{recvCh: make(chan *genai.LiveServerMessage, 8), done: make(chan struct{})}
 	srv := httptest.NewServer(newWhiteboardMux(boardFakeConnector{s: sess}, livebridge.DefaultModel))
 	defer srv.Close()
@@ -44,6 +44,7 @@ func TestWhiteboardArchitect_RelaysCanvasSnapshotBeforeToolResponse(t *testing.T
 
 	_ = conn.WriteJSON(map[string]any{
 		"tools": []map[string]any{
+			{"name": "get_board", "description": "Reads board state", "inputSchema": map[string]any{"type": "object"}},
 			{"name": "add_node", "description": "Adds box", "inputSchema": map[string]any{"type": "object"}},
 			{"name": "rogue_tool", "description": "Blocked", "inputSchema": map[string]any{"type": "object"}},
 		},
@@ -60,6 +61,33 @@ func TestWhiteboardArchitect_RelaysCanvasSnapshotBeforeToolResponse(t *testing.T
 		t.Fatalf("newWhiteboardMux(/ws/live) second frame = %+v (err=%v), want session_info", info, err)
 	}
 
+	// 1. Read-only get_board sends structured state with no video frame.
+	sess.recvCh <- &genai.LiveServerMessage{
+		ToolCall: &genai.LiveServerToolCall{
+			FunctionCalls: []*genai.FunctionCall{{
+				ID:   "wb-0",
+				Name: "get_board",
+				Args: map[string]any{},
+			}},
+		},
+	}
+
+	var getCall map[string]any
+	if err := conn.ReadJSON(&getCall); err != nil || getCall["name"] != "get_board" {
+		t.Fatalf("newWhiteboardMux(get_board) frame = %+v (err=%v), want get_board tool_call", getCall, err)
+	}
+	_ = conn.WriteJSON(map[string]any{
+		"type":   "tool_result",
+		"id":     "wb-0",
+		"result": map[string]any{"revision": 0, "nodes": []any{}, "edges": []any{}, "strokeCount": 0},
+		"execMs": 1,
+	})
+	var getTiming map[string]any
+	if err := conn.ReadJSON(&getTiming); err != nil || getTiming["type"] != "tool_timing" {
+		t.Fatalf("newWhiteboardMux(get_board timing) frame = %+v (err=%v), want tool_timing", getTiming, err)
+	}
+
+	// 2. Mutating add_node sends JPEG snapshot strictly before tool response.
 	sess.recvCh <- &genai.LiveServerMessage{
 		ToolCall: &genai.LiveServerToolCall{
 			FunctionCalls: []*genai.FunctionCall{{
@@ -79,7 +107,7 @@ func TestWhiteboardArchitect_RelaysCanvasSnapshotBeforeToolResponse(t *testing.T
 	_ = conn.WriteJSON(map[string]any{
 		"type":   "tool_result",
 		"id":     "wb-1",
-		"result": map[string]any{"added": "redis"},
+		"result": map[string]any{"added": "redis", "revision": 1},
 		"image":  jpegURL,
 		"execMs": 8,
 	})
@@ -92,8 +120,9 @@ func TestWhiteboardArchitect_RelaysCanvasSnapshotBeforeToolResponse(t *testing.T
 	sess.mu.Lock()
 	gotOrder := strings.Join(sess.events, ",")
 	sess.mu.Unlock()
-	if gotOrder != "video:image/jpeg,tool:add_node" {
-		t.Errorf("newWhiteboardMux(SeeVisualResults) upstream order = %q, want %q", gotOrder, "video:image/jpeg,tool:add_node")
+	const wantOrder = "tool:get_board,video:image/jpeg,tool:add_node"
+	if gotOrder != wantOrder {
+		t.Errorf("newWhiteboardMux(get_board + add_node) upstream order = %q, want %q", gotOrder, wantOrder)
 	}
 }
 

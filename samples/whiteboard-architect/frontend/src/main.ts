@@ -14,6 +14,7 @@
 
 import {
   LiveSession,
+  WebmcpCallEvent,
   WebmcpToolError,
   WebmcpToolHost,
 } from '@ghchinoy/livebridge';
@@ -46,6 +47,26 @@ const nodes = new Map<string, DiagramNode>();
 const edges: DiagramEdge[] = [];
 const strokes: Point[][] = [];
 let activeStroke: Point[] | null = null;
+let revision = 0;
+
+function boundedText(
+  value: unknown,
+  field: string,
+  maxChars: number,
+  required = true,
+): string {
+  const s = typeof value === 'string' ? value.trim() : '';
+  if (!s) {
+    if (required) throw new WebmcpToolError(`${field} is required.`);
+    return '';
+  }
+  if ([...s].length > maxChars) {
+    throw new WebmcpToolError(
+      `${field} must be ${maxChars} characters or fewer.`,
+    );
+  }
+  return s;
+}
 
 function renderBoardAndSnapshot(): string {
   boardCtx.fillStyle = '#030712';
@@ -122,9 +143,32 @@ function renderBoardAndSnapshot(): string {
 const toolHost = new WebmcpToolHost();
 await toolHost.register([
   {
+    name: 'get_board',
+    description:
+      'Read the current whiteboard state (monotonic revision, canvas size, node IDs/labels/coordinates, edges, and freehand stroke count) without mutating the board.',
+    inputSchema: { type: 'object', properties: {} },
+    readOnly: true,
+    untrusted: true,
+    execute: async () => ({
+      result: {
+        revision,
+        canvas: { width: board.width, height: board.height },
+        nodes: [...nodes.values()].map(({ id, label, x, y, highlighted }) => ({
+          id,
+          label,
+          x,
+          y,
+          highlighted,
+        })),
+        edges: edges.map(({ from, to, label }) => ({ from, to, label })),
+        strokeCount: strokes.length,
+      },
+    }),
+  },
+  {
     name: 'add_node',
     description:
-      'Places or updates a labeled architecture node on the 640x400 canvas.',
+      'Place or update a labeled architecture node on the 640x400 canvas.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -135,22 +179,31 @@ await toolHost.register([
       },
       required: ['id', 'label', 'x', 'y'],
     },
+    untrusted: true,
     execute: async (args) => {
-      const id = String(args.id ?? '').trim();
-      const label = String(args.label ?? '').trim();
-      if (!id || !label) throw new WebmcpToolError('id and label are required');
-      const x = Math.max(75, Math.min(565, Number(args.x ?? 320)));
-      const y = Math.max(40, Math.min(360, Number(args.y ?? 200)));
+      const id = boundedText(args.id, 'id', 64);
+      const label = boundedText(args.label, 'label', 120);
+      const rawX = Number(args.x);
+      const rawY = Number(args.y);
+      const x = Math.max(
+        75,
+        Math.min(565, Number.isFinite(rawX) ? Math.round(rawX) : 320),
+      );
+      const y = Math.max(
+        40,
+        Math.min(360, Number.isFinite(rawY) ? Math.round(rawY) : 200),
+      );
       nodes.set(id, { id, label, x, y, highlighted: false });
+      revision++;
       return {
-        result: { status: 'added', id, x, y, totalNodes: nodes.size },
+        result: { status: 'added', id, x, y, totalNodes: nodes.size, revision },
         imageDataUrl: renderBoardAndSnapshot(),
       };
     },
   },
   {
     name: 'connect_nodes',
-    description: 'Draws a labeled connector between two existing node IDs.',
+    description: 'Draw or update a labeled connector between two node IDs.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -160,48 +213,73 @@ await toolHost.register([
       },
       required: ['from', 'to'],
     },
+    untrusted: true,
     execute: async (args) => {
-      const from = String(args.from ?? '');
-      const to = String(args.to ?? '');
+      const from = boundedText(args.from, 'from', 64);
+      const to = boundedText(args.to, 'to', 64);
+      const label = boundedText(args.label, 'label', 80, false);
       if (!nodes.has(from) || !nodes.has(to)) {
-        throw new WebmcpToolError(`Unknown endpoint (${from} -> ${to})`);
+        throw new WebmcpToolError(
+          `Unknown node endpoint (${from} -> ${to}). Call get_board to list node IDs.`,
+        );
       }
-      edges.push({ from, to, label: String(args.label ?? '') });
+      const existing = edges.find((e) => e.from === from && e.to === to);
+      if (existing) {
+        existing.label = label;
+      } else {
+        edges.push({ from, to, label });
+      }
+      revision++;
       return {
-        result: { status: 'connected', from, to },
+        result: {
+          status: 'connected',
+          from,
+          to,
+          totalEdges: edges.length,
+          revision,
+        },
         imageDataUrl: renderBoardAndSnapshot(),
       };
     },
   },
   {
     name: 'highlight_node',
-    description: 'Highlights a specific node ID in amber while discussing it.',
+    description: 'Highlight an existing node ID in amber while discussing it.',
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string' } },
       required: ['id'],
     },
     execute: async (args) => {
-      const id = String(args.id ?? '');
+      const id = boundedText(args.id, 'id', 64);
+      if (!nodes.has(id)) {
+        throw new WebmcpToolError(
+          `Unknown node "${id}". Call get_board to list node IDs.`,
+        );
+      }
       for (const n of nodes.values()) {
         n.highlighted = n.id === id;
       }
+      revision++;
       return {
-        result: { highlighted: id },
+        result: { highlighted: id, revision },
         imageDataUrl: renderBoardAndSnapshot(),
       };
     },
   },
   {
     name: 'clear_board',
-    description: 'Clears all nodes, edges, and freehand strokes from the board.',
+    description:
+      'Clear all nodes, edges, and freehand strokes from the board. Confirm with the user before calling.',
     inputSchema: { type: 'object', properties: {} },
+    consequential: true,
     execute: async () => {
       nodes.clear();
       edges.length = 0;
       strokes.length = 0;
+      revision++;
       return {
-        result: { cleared: true },
+        result: { cleared: true, revision },
         imageDataUrl: renderBoardAndSnapshot(),
       };
     },
@@ -210,7 +288,20 @@ await toolHost.register([
 
 const session = new LiveSession({ mode: 'audio', toolHost });
 
-// Freehand pointer drawing -> sends live JPEG frame on pointerup!
+// Keep any active voice session visually synchronized if an external WebMCP
+// agent (e.g. Chrome DevTools / browser agent) mutates the board directly.
+toolHost.addEventListener('call', (ev) => {
+  const call = ev as WebmcpCallEvent;
+  if (call.caller !== 'external') return;
+  $('timing').textContent =
+    `External WebMCP tool: ${call.name} (${call.ms}ms · rev ${revision})`;
+  if (session.isConnected && call.imageDataUrl) {
+    const b64 = call.imageDataUrl.split(',')[1];
+    if (b64) session.socket.sendVideoFrame(b64);
+  }
+});
+
+// Freehand pointer drawing -> bumps revision and sends live JPEG frame on pointerup!
 function canvasCoords(e: PointerEvent): Point {
   const rect = board.getBoundingClientRect();
   return {
@@ -235,6 +326,7 @@ board.addEventListener('pointermove', (e) => {
 board.addEventListener('pointerup', () => {
   if (!activeStroke) return;
   activeStroke = null;
+  revision++;
   const dataUrl = renderBoardAndSnapshot();
   if (session.isConnected) {
     const b64 = dataUrl.split(',')[1];
@@ -297,7 +389,7 @@ $('start-btn').onclick = () =>
     onCustomMessage: (msg) => {
       if (msg.type === 'tool_timing') {
         $('timing').textContent =
-          `Last WebMCP tool: ${String(msg.name)} (${String(msg.execMs)}ms canvas / ${String(msg.roundTripMs)}ms RTT)`;
+          `Last WebMCP tool: ${String(msg.name)} (${String(msg.execMs)}ms canvas / ${String(msg.roundTripMs)}ms RTT · rev ${revision})`;
       }
     },
   });
@@ -309,6 +401,7 @@ $('clear-btn').onclick = () => {
   nodes.clear();
   edges.length = 0;
   strokes.length = 0;
+  revision++;
   renderBoardAndSnapshot();
 };
 

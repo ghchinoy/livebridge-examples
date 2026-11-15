@@ -1,8 +1,9 @@
 # Whiteboard Architect (Vanilla TypeScript + `@ghchinoy/livebridge`)
 
-Zero-framework TypeScript studio where **both you (freehand pointer drawing) and Gemini Live (WebMCP canvas tools)** co-design system architecture diagrams on a shared `640x400` `<canvas>`, accompanied by a 60 FPS `PcmPlayer.analyser` frequency visualizer.
+Zero-framework TypeScript studio where **both you (freehand pointer drawing) and AI agents (Gemini Live voice + external `document.modelContext` WebMCP callers)** co-design system architecture diagrams on a shared `640x400` `<canvas>`, accompanied by a 60 FPS `PcmPlayer.analyser` frequency visualizer.
 
-- **Bidirectional Visual Grounding:** Every WebMCP tool call (`add_node`, `connect_nodes`, `highlight_node`, `clear_board`) returns a JPEG snapshot (`SeeVisualResults: true`), and every freehand pointer stroke sends a live JPEG frame so Gemini sees your annotations immediately.
+- **Structured State + Monotonic `revision` (`get_board`):** Exposes a read-only `get_board` tool (`readOnlyHint: true`, `untrustedContentHint: true`) returning `{ revision, canvas, nodes, edges, strokeCount }` so reconnecting voice sessions and external WebMCP agents recover exact node IDs, coordinates, and revision state without guessing from pixels.
+- **Bidirectional Visual Grounding & W3C §6.4 Annotations:** Mutating tools (`add_node`, `connect_nodes`, `highlight_node`, and `clear_board` with `consequentialHint: true`) bump `revision` and return a JPEG snapshot (`SeeVisualResults: true`); freehand pointer strokes and external `document.modelContext` edits also bump `revision` and stream live JPEG updates when connected.
 - **Audio-Reactive Mute Proof:** Click **Mute Speaker** while the architect is talking—speaker output silences (`OutputGainNode.gain = 0`) while the `AnalyserNode` spectrum bars keep animating.
 
 ## Run
