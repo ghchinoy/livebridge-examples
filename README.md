@@ -5,7 +5,12 @@
 [![livebridge v0.1.1](https://img.shields.io/badge/livebridge-v0.1.1-3178C6)](https://github.com/ghchinoy/livebridge/releases/tag/v0.1.1)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-Multi-framework external showcase and release-canary applications built on [`github.com/ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge) and [`@ghchinoy/livebridge`](https://www.npmjs.com/package/@ghchinoy/livebridge) across **Lit 3**, **Vanilla TypeScript**, **React 19**, and **Zero-Node Go**—consuming the published packages directly from `proxy.golang.org` and `npmjs.com` with zero `go.work` or `replace` directives.
+Multi-framework external showcase and release-canary applications built on [`github.com/ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge) and [`@ghchinoy/livebridge`](https://www.npmjs.com/package/@ghchinoy/livebridge) across **Lit 3**, **Vanilla TypeScript**, **React 19**, **Zero-Node Go**, and **[Gemini Managed Agents](https://aistudio.google.com/docs/managed-agents-quickstart)**—consuming the published packages directly from `proxy.golang.org` and `npmjs.com` with zero `go.work` or `replace` directives.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/examples-overview-dark.webp">
+  <img alt="livebridge-examples multi-framework showcase and canary matrix" src="docs/assets/examples-overview-light.webp">
+</picture>
 
 > **Ecosystem & Related Repositories:**
 >
@@ -63,8 +68,9 @@ Use `./run.sh` to start any sample's Go backend and Vite dev server together wit
 # Launch any sample interactively:
 ./run.sh visual-concierge      # -> http://localhost:5181 (Lit 3 + Avatar + Camera/Screen)
 ./run.sh whiteboard-architect  # -> http://localhost:5182 (Vanilla TS + Shared Canvas)
-./run.sh bilingual-coach       # -> http://localhost:5183 (React 19 + Roleplay & VAD)
-./run.sh pocket-briefing       # -> http://localhost:8094 (Zero-Node Go + Inbox AlertBus)
+./run.sh bilingual-coach         # -> http://localhost:5183 (React 19 + Roleplay & VAD)
+./run.sh pocket-briefing         # -> http://localhost:8094 (Zero-Node Go + Inbox AlertBus)
+./run.sh antigravity-voice-desk  # -> http://localhost:5185 (Gemini 3.8 Live + Managed Agents)
 ```
 
 ---
@@ -79,6 +85,14 @@ Every sample has its own standalone `go.mod` importing `github.com/ghchinoy/live
 | **[`whiteboard-architect`](samples/whiteboard-architect/)** | `:5182` (Go `:8092`) | **Vanilla TypeScript** (`@ghchinoy/livebridge`) | `LiveSession`, `WebmcpToolHost` (`get_board` with monotonic `revision` + `readOnlyHint`/`untrustedContentHint`, `add_node`, `connect_nodes`, `highlight_node`, `clear_board` with `consequentialHint`), freehand pointer strokes + `SeeVisualResults` JPEG loop, 60 FPS `PcmPlayer.analyser` spectrum. |
 | **[`bilingual-coach`](samples/bilingual-coach/)** | `:5183` (Go `:8093`) | **React 19** (`@ghchinoy/livebridge` + `useLiveSession`) | Idiomatic React 19 `EventTarget` hook, dynamic `LanguageCode` (`es-US`, `ja-JP`, `en-US`), `AdaptationPhrases`, tunable VAD `SilenceDurationMs` slider, `FuncRegistry` (`score_turn`). |
 | **[`pocket-briefing`](samples/pocket-briefing/)** | `:8094` | **Zero-Node Go** (`livebridge/browser`) | Single Go binary (`//go:embed`), `./inbox/` `.md`/`.txt` watcher + `POST /api/memo`, `AlertBus` + `FormatUntrustedAlert` + `ChimeSynth`, `FuncRegistry` (`save_action_item`). |
+| **[`antigravity-voice-desk`](samples/antigravity-voice-desk/)** | `:5185` (Go `:8095`) | **Lit 3 + [Managed Agents](https://aistudio.google.com/docs/managed-agents-quickstart)** | Stateless voice/avatar edge (`gemini-3.8-live`) delegating Python/Bash/chart work to an isolated `antigravity-preview-09-2026` Linux VM via async SSE (`google.golang.org/genai/interactions`), `AlertBus` chimes, `Interactions.Cancel`, and `/environments/{id}/files` PNG visual inspection. |
+
+### Zero-Trust Voice Edge + Managed Agents Sandbox (`antigravity-voice-desk`)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/managed-agents-split-dark.webp">
+  <img alt="Fast voice edge paired with Gemini Managed Agents sandbox and write-only credentials egress proxy" src="docs/assets/managed-agents-split-light.webp">
+</picture>
 
 ---
 

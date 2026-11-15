@@ -50,9 +50,13 @@ Available livebridge external samples:
      Multilingual & interview roleplay partner with tunable VAD pause patience
      (SilenceDurationMs), adaptation phrases, and live rubric cards.
 
-  4. pocket-briefing       [Zero-Node Go]      http://localhost:8094
+  4. pocket-briefing         [Zero-Node Go]      http://localhost:8094
      Single-binary Go voice briefing desk (livebridge/browser) watching ./inbox
      files and POST /api/memo webhooks via AlertBus + ChimeSynth.
+
+  5. antigravity-voice-desk  [Managed Agents]    http://localhost:5185 (Go :8095)
+     Stateless voice/avatar edge delegating code execution & chart plotting to
+     an isolated Gemini Managed Agents (Antigravity) Linux sandbox via AlertBus.
 
 Usage:
   ./run.sh <sample-name>

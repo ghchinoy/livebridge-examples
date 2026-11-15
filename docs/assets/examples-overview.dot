@@ -1,0 +1,56 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Multi-framework external samples consuming published Go and npm livebridge.
+digraph examples_overview {
+  label = "livebridge-examples · multi-framework showcase & canary matrix";
+  rankdir = LR;
+  ranksep = 0.82;
+  nodesep = 0.36;
+
+  subgraph cluster_samples {
+    label = "Standalone external apps (./run.sh <sample>)";
+    class = "accent";
+
+    s1 [label="visual-concierge\n(Lit 3 · avatar + 1 FPS vision)", class="agent-blue"];
+    s2 [label="whiteboard-architect\n(Vanilla TS · WebMCP + rev)", class="agent-teal"];
+    s3 [label="bilingual-coach\n(React 19 · multilingual VAD)", class="agent-pink"];
+    s5 [label="antigravity-voice-desk\n(Managed Agents sandbox)", class="agent-violet"];
+    s4 [label="pocket-briefing\n(Zero-Node Go · inbox AlertBus)", class="agent-orange"];
+  }
+
+  subgraph cluster_libs {
+    label = "Published packages";
+
+    ts [label="@ghchinoy/livebridge\n(npm · /lit · /browser)", class="emphasis code"];
+    go [label="github.com/ghchinoy/livebridge\n(Go switchboard · handlers)", class="primary code"];
+  }
+
+  subgraph cluster_apis {
+    label = "Gemini APIs";
+
+    live [label="gemini-3.8-live\n(audio & fMP4 avatar)", class="external"];
+    ag   [label="Managed Agents\n(Antigravity Linux VM)", class="external"];
+  }
+
+  s1 -> ts;
+  s2 -> ts;
+  s3 -> ts;
+  s5 -> ts;
+  s4 -> go [label="//go:embed", class="code"];
+
+  ts -> go   [label="WS JSON + binary", class="primary", dir=both];
+  go -> live [label="Bidi stream", class="primary", dir=both];
+  go -> ag   [label="Interactions SSE\n+ env files", class="async", dir=both];
+}

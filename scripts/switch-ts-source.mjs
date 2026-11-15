@@ -27,6 +27,7 @@ const FRONTENDS = [
   'samples/visual-concierge/frontend',
   'samples/whiteboard-architect/frontend',
   'samples/bilingual-coach/frontend',
+  'samples/antigravity-voice-desk/frontend',
 ];
 
 const mode = process.argv[2];
@@ -101,9 +102,10 @@ for (const relFe of FRONTENDS) {
   console.log(`[${relFe}] @ghchinoy/livebridge -> ${depSpec}`);
 
   if (!skipInstall) {
-    // Remove any cached symlink/unpack and package-lock entry so npm cleanly
-    // transitions between file: symlink, .tgz tarball, and registry specs.
-    rmSync(resolve(feDir, 'node_modules/@ghchinoy/livebridge'), {
+    // Remove both node_modules and package-lock.json when switching package
+    // sources so npm resolves all cross-platform optional bindings cleanly
+    // without triggering https://github.com/npm/cli/issues/4828.
+    rmSync(resolve(feDir, 'node_modules'), {
       recursive: true,
       force: true,
     });

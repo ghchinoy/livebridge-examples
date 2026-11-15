@@ -1,0 +1,64 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Fast voice/avatar edge paired with Gemini Managed Agents zero-trust sandbox.
+digraph managed_agents_split {
+  label = "Fast voice edge + zero-trust Managed Agent sandbox";
+  rankdir = LR;
+  ranksep = 0.78;
+  nodesep = 0.45;
+  newrank = true;
+
+  subgraph cluster_client {
+    label = "Browser tab";
+
+    ui [label="LiveSession\n(voice · avatar · artifacts)", class="agent-teal"];
+  }
+
+  subgraph cluster_edge {
+    label = "Stateless Go edge · Cloud Run (distroless, 0 3P secrets)";
+    class = "accent";
+
+    bridge [label="livebridge.Bridge\n(realtime switchboard)", class="primary code"];
+    bus    [label="AlertBus\n(progress chimes)", class="store code"];
+    runner [label="Sandbox delegator\n(FuncRegistry + cancel)", class="emphasis code"];
+
+    {rank=same; bus; runner;}
+  }
+
+  subgraph cluster_realtime {
+    label = "Realtime plane (<1s TTFF)";
+
+    live [label="gemini-3.8-live\n(Bidi audio & fMP4 video)", class="external"];
+  }
+
+  subgraph cluster_sandbox {
+    label = "Gemini Managed Agents (10–90s async)";
+
+    ag    [label="antigravity-preview-09-2026\n(Linux VM · Python · Bash)", class="agent-violet"];
+    proxy [label="Credentials egress proxy\n(write-only OAuth2 / PAT)", class="positive"];
+    apis  [label="GitHub · GCS · 3P APIs", class="external muted"];
+  }
+
+  ui     -> bridge [label="WS PCM / fMP4\n+ artifact cards", class="primary", dir=both];
+  bridge -> live   [label="Bidi stream", class="primary", dir=both];
+
+  bridge -> runner [label="delegate_task"];
+  runner -> bus    [label="SSE milestones\n& output PNGs", class="async"];
+  bus    -> bridge [label="chime + Video\nframe inspect", class="weak", constraint=false];
+
+  runner -> ag     [label="POST /v1beta/interactions\n(stream + env_id)", class="async", dir=both];
+  ag     -> proxy  [label="allowlist"];
+  proxy  -> apis   [label="header injected\non wire", class="positive"];
+}

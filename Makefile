@@ -15,13 +15,18 @@
 # livebridge-examples: External consumer validation suite across Lit 3,
 # Vanilla TypeScript, React 19, and Zero-Node Go.
 
-.PHONY: help install use-local use-tarball use-npm verify lint test test-go build-fe
+.PHONY: help install use-local use-tarball use-npm diagrams verify lint test test-go build-fe
+
+LUMINOUS_THEME ?= ../graphviz-style/theme/luminous.gvpr
+DOT_SOURCES := $(wildcard docs/assets/*.dot)
 
 SAMPLES_GO := samples/visual-concierge samples/whiteboard-architect \
-	samples/bilingual-coach samples/pocket-briefing
+	samples/bilingual-coach samples/pocket-briefing \
+	samples/antigravity-voice-desk
 SAMPLES_FE := samples/visual-concierge/frontend \
 	samples/whiteboard-architect/frontend \
-	samples/bilingual-coach/frontend
+	samples/bilingual-coach/frontend \
+	samples/antigravity-voice-desk/frontend
 
 help:
 	@echo "livebridge-examples — Makefile Commands"
@@ -53,6 +58,13 @@ use-tarball:
 
 use-npm:
 	@node scripts/switch-ts-source.mjs npm $(VERSION) $(ARGS)
+
+diagrams:
+	@for f in $(DOT_SOURCES); do \
+		base="$${f%.dot}"; \
+		gvpr -c -f "$(LUMINOUS_THEME)" -a light "$$f" | dot -Twebp -o "$${base}-light.webp"; \
+		gvpr -c -f "$(LUMINOUS_THEME)" -a dark  "$$f" | dot -Twebp -o "$${base}-dark.webp"; \
+	done
 
 lint:
 	@unformatted="$$(gofmt -s -l $$(find samples -name '*.go' -not -path '*/node_modules/*'))"; \
