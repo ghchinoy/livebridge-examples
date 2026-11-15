@@ -7,10 +7,11 @@
 
 Multi-framework external showcase and release-canary applications built on [`github.com/ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge) and [`@ghchinoy/livebridge`](https://www.npmjs.com/package/@ghchinoy/livebridge) across **Lit 3**, **Vanilla TypeScript**, **React 19**, and **Zero-Node Go**—consuming the published packages directly from `proxy.golang.org` and `npmjs.com` with zero `go.work` or `replace` directives.
 
-> **Relationship to [`ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge):**
+> **Ecosystem & Related Repositories:**
 >
 > - **[`ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge)** owns the core Go & TypeScript libraries, the [Developer Guide](https://github.com/ghchinoy/livebridge/blob/main/docs/developers-guide.md), [Recipes](https://github.com/ghchinoy/livebridge/blob/main/docs/recipes.md), [Wire Protocol](https://github.com/ghchinoy/livebridge/blob/main/docs/wire-protocol.md), and 4 minimal CI-gated API unit recipes (`examples/01`–`04`).
-> - **`livebridge-examples` *(this repository)*** provides richer, real-world domain applications across multiple UI frameworks (React 19, Lit 3, Vanilla TS, Zero-Node Go) plus a one-command switcher (`make use-local` / `make use-tarball` / `make use-npm`) for canary-testing `livebridge` changes before and after publishing.
+> - **[Gemini Live Studio (`GoogleCloudPlatform/generative-ai`)](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/multimodal-live-api/gemini-live-studio)** is the full Google Cloud reference application (persona studio, custom avatar image synthesis, and WCAG-audited UI) where `livebridge`'s architecture originated.
+> - **`livebridge-examples` *(this repository)*** provides focused external domain applications across multiple UI frameworks (React 19, Lit 3, Vanilla TS, Zero-Node Go) plus a one-command switcher (`make use-local` / `make use-tarball` / `make use-npm`) for canary-testing `livebridge` releases.
 
 ## Contents
 
@@ -20,6 +21,7 @@ Multi-framework external showcase and release-canary applications built on [`git
 - [Switching `@ghchinoy/livebridge` Source (`npm` / `local` / `tarball`)](#switching-ghchinoylivebridge-source-npm--local--tarball)
 - [Local Verification & Quality Gates](#local-verification--quality-gates)
 - [Troubleshooting](#troubleshooting)
+- [Official Gemini 3.8 Live & Reference Documentation](#official-gemini-38-live--reference-documentation)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -30,12 +32,12 @@ Multi-framework external showcase and release-canary applications built on [`git
 - **Go** `1.26+` (`go version`)
 - **Node.js** `22.23.4+` and **npm** `10+` (`node -v`)
 - **Authentication:**
-  - **Google Cloud ADC *(recommended; required for talking video avatars)*:**
+  - **Google Cloud ADC *([Gemini 3.8 Live Guide](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/guides/gemini-3-8-live); recommended, required for talking video avatars)*:**
     ```bash
     gcloud auth application-default login
     export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
     ```
-  - **Gemini Developer API *(audio & tool samples)*:**
+  - **Gemini Developer API *([Google AI Studio `gemini-3.8-live` Docs](https://aistudio.google.com/docs/models/gemini-3.8-live); audio & tool samples)*:**
     ```bash
     export GEMINI_API_KEY="your-api-key"
     ```
@@ -114,6 +116,16 @@ make verify    # Full lint + test + Go binary builds + Vite production builds
 - **`GOOGLE_CLOUD_PROJECT` vs `GEMINI_API_KEY`:** Talking video avatars (`ModeAvatar` in `visual-concierge` and `bilingual-coach`) require Vertex AI (`GOOGLE_CLOUD_PROJECT` in `us-central1`). Audio-only mode works with either `GOOGLE_CLOUD_PROJECT` or `GEMINI_API_KEY`.
 - **Custom avatar `1007` rejections:** `visual-concierge` automatically crops uploaded photos via `prepareAvatarImage` (`704x1280` or `1280x704`). Note that `CustomizedAvatar` also requires your GCP project to be allowlisted for custom avatars; the 11 built-in `PRESET_AVATARS` (`Kira`, `Ingrid`, `Jay`, `Paul`, `Vera`, `Sam`, `Ben`, `Kai`, `Leo`, `Carmen`, `Piper`) work without custom-avatar allowlisting.
 - **Port already in use:** Override `PORT=8099` when starting a Go backend manually if `:8091`–`:8094` is occupied.
+
+---
+
+## Official Gemini 3.8 Live & Reference Documentation
+
+- **[Gemini 3.8 Live Developer Guide (Google Cloud)](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/guides/gemini-3-8-live)** — Bidi streaming, talking video avatars, custom avatars, replicated voice, and proactivity on Google Cloud.
+- **[Gemini 3.8 Live Model Card & Specifications (Google Cloud)](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-8-live)** — Regional endpoints (`us-central1`), supported modalities, and session limits.
+- **[Gemini 3.8 Live Documentation (Google AI Studio)](https://aistudio.google.com/docs/models/gemini-3.8-live)** — Using `gemini-3.8-live` with the Gemini Developer API (`GEMINI_API_KEY`).
+- **[Gemini Live Studio (`GoogleCloudPlatform/generative-ai`)](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/multimodal-live-api/gemini-live-studio)** — Full Google Cloud reference application showcasing `livebridge`'s switchboard and browser media architecture.
+- **[`ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge)** — Core Go (`github.com/ghchinoy/livebridge`) and TypeScript (`@ghchinoy/livebridge`) libraries, [Developer Guide](https://github.com/ghchinoy/livebridge/blob/main/docs/developers-guide.md), [Recipes](https://github.com/ghchinoy/livebridge/blob/main/docs/recipes.md), and [Wire Protocol](https://github.com/ghchinoy/livebridge/blob/main/docs/wire-protocol.md).
 
 ---
 
