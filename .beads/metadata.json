@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "livebridge_examples",
+  "project_id": "79301b4a-f716-4169-ab34-d1f841018340"
+}
