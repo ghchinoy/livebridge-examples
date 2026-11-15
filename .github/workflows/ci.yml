@@ -43,7 +43,9 @@ jobs:
           node-version: '22'
 
       - name: Install Frontend Dependencies from npm
-        run: make install
+        run: |
+          rm -f samples/*/frontend/package-lock.json
+          make install
 
       - name: Lint, Race-Test & Build All 4 Samples
         run: make verify
