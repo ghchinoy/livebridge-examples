@@ -1,5 +1,12 @@
 # Agent Instructions
 
+`livebridge-examples` is the companion external showcase and release-canary repository for [`github.com/ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge) (`~/projects/livebridge`) and [`@ghchinoy/livebridge`](https://www.npmjs.com/package/@ghchinoy/livebridge).
+
+- **Boundary between repos:**
+  - `~/projects/livebridge` (`ghchinoy/livebridge`) owns the core Go switchboard, `livebridge/browser`, `@ghchinoy/livebridge` (+ `/lit`), Diátaxis docs, and 4 minimal CI-gated API recipes (`examples/01`–`04`).
+  - `~/projects/livebridge-examples` (`ghchinoy/livebridge-examples`) owns full multi-framework external apps (`visual-concierge` Lit 3, `whiteboard-architect` Vanilla TS, `bilingual-coach` React 19, `pocket-briefing` Zero-Node Go) consuming published `proxy.golang.org` and `npmjs.com` releases with zero `go.work` or `replace` directives.
+- **Release canary workflow:** Before publishing a new `livebridge` version, run `make use-tarball && make verify` here; after publishing to npm, run `make use-npm VERSION=<x.y.z> && make verify` so committed `package.json` files track the public npm release.
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 > **Architecture in one line:** Issues live in a local Dolt database

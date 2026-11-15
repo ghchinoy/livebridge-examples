@@ -1,7 +1,32 @@
-
-# Beads / Dolt files (added by bd init)
+# Beads / Dolt files
 .dolt/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+.beads/dolt/
 *.gate.lock*
+
+# Local IDE & agent harness metadata
+.serena/
+.claude/
+.cursor/
+.agents/
+CLAUDE.md
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Packed pre-publish tarballs & frontend build outputs
+.vendor/
+**/node_modules/
+**/dist/
+*.tsbuildinfo
+
+# Sample Go binaries & runtime scratch dirs
+/samples/visual-concierge/visual-concierge
+/samples/whiteboard-architect/whiteboard-architect
+/samples/bilingual-coach/bilingual-coach
+/samples/pocket-briefing/pocket-briefing
+/samples/pocket-briefing/inbox/
+/samples/pocket-briefing/action-items.json

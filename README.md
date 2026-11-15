@@ -1,0 +1,128 @@
+# livebridge-examples
+
+[![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](https://github.com/ghchinoy/livebridge)
+[![npm @ghchinoy/livebridge](https://img.shields.io/npm/v/@ghchinoy/livebridge?logo=npm&color=CB3837)](https://www.npmjs.com/package/@ghchinoy/livebridge)
+[![livebridge v0.1.1](https://img.shields.io/badge/livebridge-v0.1.1-3178C6)](https://github.com/ghchinoy/livebridge/releases/tag/v0.1.1)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
+Multi-framework external showcase and release-canary applications built on [`github.com/ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge) and [`@ghchinoy/livebridge`](https://www.npmjs.com/package/@ghchinoy/livebridge) across **Lit 3**, **Vanilla TypeScript**, **React 19**, and **Zero-Node Go**—consuming the published packages directly from `proxy.golang.org` and `npmjs.com` with zero `go.work` or `replace` directives.
+
+> **Relationship to [`ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge):**
+>
+> - **[`ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge)** owns the core Go & TypeScript libraries, the [Developer Guide](https://github.com/ghchinoy/livebridge/blob/main/docs/developers-guide.md), [Recipes](https://github.com/ghchinoy/livebridge/blob/main/docs/recipes.md), [Wire Protocol](https://github.com/ghchinoy/livebridge/blob/main/docs/wire-protocol.md), and 4 minimal CI-gated API unit recipes (`examples/01`–`04`).
+> - **`livebridge-examples` *(this repository)*** provides richer, real-world domain applications across multiple UI frameworks (React 19, Lit 3, Vanilla TS, Zero-Node Go) plus a one-command switcher (`make use-local` / `make use-tarball` / `make use-npm`) for canary-testing `livebridge` changes before and after publishing.
+
+## Contents
+
+- [Prerequisites & Setup](#prerequisites--setup)
+- [Quickstart (`./run.sh`)](#quickstart-runsh)
+- [Sample Catalog](#sample-catalog)
+- [Switching `@ghchinoy/livebridge` Source (`npm` / `local` / `tarball`)](#switching-ghchinoylivebridge-source-npm--local--tarball)
+- [Local Verification & Quality Gates](#local-verification--quality-gates)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Prerequisites & Setup
+
+- **Go** `1.26+` (`go version`)
+- **Node.js** `22.23.4+` and **npm** `10+` (`node -v`)
+- **Authentication:**
+  - **Google Cloud ADC *(recommended; required for talking video avatars)*:**
+    ```bash
+    gcloud auth application-default login
+    export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+    ```
+  - **Gemini Developer API *(audio & tool samples)*:**
+    ```bash
+    export GEMINI_API_KEY="your-api-key"
+    ```
+
+Clone and install frontend dependencies from npm:
+
+```bash
+git clone https://github.com/ghchinoy/livebridge-examples.git
+cd livebridge-examples
+make install
+```
+
+---
+
+## Quickstart (`./run.sh`)
+
+Use `./run.sh` to start any sample's Go backend and Vite dev server together with automatic `Ctrl+C` cleanup:
+
+```bash
+# List all samples, stacks, and local URLs
+./run.sh --list
+
+# Launch any sample interactively:
+./run.sh visual-concierge      # -> http://localhost:5181 (Lit 3 + Avatar + Camera/Screen)
+./run.sh whiteboard-architect  # -> http://localhost:5182 (Vanilla TS + Shared Canvas)
+./run.sh bilingual-coach       # -> http://localhost:5183 (React 19 + Roleplay & VAD)
+./run.sh pocket-briefing       # -> http://localhost:8094 (Zero-Node Go + Inbox AlertBus)
+```
+
+---
+
+## Sample Catalog
+
+Every sample has its own standalone `go.mod` importing `github.com/ghchinoy/livebridge v0.1.1` from `proxy.golang.org` and `package.json` importing `@ghchinoy/livebridge@^0.1.1` from npm:
+
+| Sample | URL / Ports | Frontend Stack | Key `livebridge` Capabilities Proven |
+| :--- | :--- | :--- | :--- |
+| **[`visual-concierge`](samples/visual-concierge/)** | `:5181` (Go `:8091`) | **Lit 3** (`@ghchinoy/livebridge` + `/lit`) | `LiveSessionController`, `PRESET_AVATARS` + `defaultVoiceForAvatar`, `prepareAvatarImage` (`704x1280` / `1280x704`), `Fmp4Player`, 1 FPS webcam & screen `VisionCapture`, `FuncRegistry` (`upsert_checklist`). |
+| **[`whiteboard-architect`](samples/whiteboard-architect/)** | `:5182` (Go `:8092`) | **Vanilla TypeScript** (`@ghchinoy/livebridge`) | `LiveSession`, `WebmcpToolHost` (`add_node`, `connect_nodes`, `highlight_node`, `clear_board`), freehand pointer strokes + `SeeVisualResults` JPEG loop, 60 FPS `PcmPlayer.analyser` spectrum. |
+| **[`bilingual-coach`](samples/bilingual-coach/)** | `:5183` (Go `:8093`) | **React 19** (`@ghchinoy/livebridge` + `useLiveSession`) | Idiomatic React 19 `EventTarget` hook, dynamic `LanguageCode` (`es-US`, `ja-JP`, `en-US`), `AdaptationPhrases`, tunable VAD `SilenceDurationMs` slider, `FuncRegistry` (`score_turn`). |
+| **[`pocket-briefing`](samples/pocket-briefing/)** | `:8094` | **Zero-Node Go** (`livebridge/browser`) | Single Go binary (`//go:embed`), `./inbox/` `.md`/`.txt` watcher + `POST /api/memo`, `AlertBus` + `FormatUntrustedAlert` + `ChimeSynth`, `FuncRegistry` (`save_action_item`). |
+
+---
+
+## Switching `@ghchinoy/livebridge` Source (`npm` / `local` / `tarball`)
+
+By default, all frontends install `@ghchinoy/livebridge` from the public npm registry (`^0.1.1`). When developing unreleased changes in a sibling `../livebridge` checkout, [`scripts/switch-ts-source.mjs`](scripts/switch-ts-source.mjs) switches all three Vite frontends in one command:
+
+```bash
+# 1. Public npm registry (^0.1.1) — default for external consumers & CI
+make use-npm VERSION=0.1.1
+
+# 2. Local sibling checkout (file:../../../../livebridge) — fast local iteration
+make use-local
+
+# 3. Pre-publish npm pack rehearsal (.vendor/ghchinoy-livebridge-*.tgz)
+make use-tarball
+make verify
+```
+
+---
+
+## Local Verification & Quality Gates
+
+```bash
+make lint      # gofmt -s, go vet, golangci-lint, and tsc --noEmit across all samples
+make test      # Go -race unit & WebSocket integration tests across all 4 samples
+make build-fe  # Production Vite builds across Lit 3, Vanilla TS, and React 19
+make verify    # Full lint + test + Go binary builds + Vite production builds
+```
+
+---
+
+## Troubleshooting
+
+- **`GOOGLE_CLOUD_PROJECT` vs `GEMINI_API_KEY`:** Talking video avatars (`ModeAvatar` in `visual-concierge` and `bilingual-coach`) require Vertex AI (`GOOGLE_CLOUD_PROJECT` in `us-central1`). Audio-only mode works with either `GOOGLE_CLOUD_PROJECT` or `GEMINI_API_KEY`.
+- **Custom avatar `1007` rejections:** `visual-concierge` automatically crops uploaded photos via `prepareAvatarImage` (`704x1280` or `1280x704`). Note that `CustomizedAvatar` also requires your GCP project to be allowlisted for custom avatars; the 11 built-in `PRESET_AVATARS` (`Kira`, `Ingrid`, `Jay`, `Paul`, `Vera`, `Sam`, `Ben`, `Kai`, `Leo`, `Carmen`, `Piper`) work without custom-avatar allowlisting.
+- **Port already in use:** Override `PORT=8099` when starting a Go backend manually if `:8091`–`:8094` is occupied.
+
+---
+
+## Contributing
+
+Issues and pull requests adding new framework integrations or domain samples are welcome. For changes to the core Go switchboard or `@ghchinoy/livebridge` runtime, see [`ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge). Ensure `make verify` passes before opening a PR.
+
+---
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).

@@ -1,0 +1,192 @@
+<!doctype html>
+<!--
+ Copyright 2026 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pocket Briefing — Zero-Node Go + livebridge/browser</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #090d16;
+        color: #f8fafc;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        padding: 1.25rem;
+      }
+      .grid {
+        max-width: 1080px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 1.1rem;
+      }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        background: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 16px;
+        padding: 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+      button {
+        padding: 0.48rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid #334155;
+        background: #1e293b;
+        color: #f8fafc;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary { background: #38bdf8; color: #082f49; border-color: transparent; }
+      button.warn { background: #f59e0b; color: #451a03; border-color: transparent; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      #transcript {
+        height: 360px;
+        overflow-y: auto;
+        background: #030712;
+        border-radius: 12px;
+        padding: 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+      .turn { padding: 0.5rem 0.75rem; border-radius: 10px; max-width: 88%; font-size: 0.9rem; }
+      .turn.user { align-self: flex-end; background: #1d4ed8; }
+      .turn.assistant { align-self: flex-start; background: #1e293b; }
+      .turn.tool { align-self: stretch; background: #0f172a; border: 1px solid #334155; font-family: ui-monospace, monospace; font-size: 0.78rem; }
+      input {
+        flex: 1;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        background: #030712;
+        color: #f8fafc;
+      }
+      .item { padding: 0.6rem 0.75rem; border-radius: 10px; background: #030712; border: 1px solid #1e293b; font-size: 0.86rem; }
+      .meta { font-size: 0.78rem; color: #94a3b8; }
+    </style>
+  </head>
+  <body>
+    <div class="grid">
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Pocket Briefing (Zero-Node Go + livebridge/browser)</strong>
+          <span id="status" class="meta">Idle</span>
+        </div>
+        <div class="row">
+          <button id="start" class="primary">Connect Briefing Desk</button>
+          <button id="mic" disabled>Mute Mic</button>
+          <button id="chime">Chime: soft</button>
+          <button id="memo" class="warn">Drop Sample Memo</button>
+          <button id="end" disabled>End</button>
+        </div>
+        <div id="alert-banner" class="meta" style="color:#fcd34d"></div>
+        <div id="transcript" aria-live="polite"></div>
+        <form id="prompt-form" class="row">
+          <input id="prompt-input" placeholder="e.g. Save an action item to review canary latency with SRE" />
+          <button type="submit" id="send" disabled>Send</button>
+        </form>
+      </section>
+
+      <aside class="card">
+        <strong>Captured Action Items</strong>
+        <div class="meta">Drop any <code>.md</code> or <code>.txt</code> file into <code>./inbox/</code> to trigger a spoken briefing.</div>
+        <div id="actions" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+      </aside>
+    </div>
+
+    <script type="module">
+      import { LiveSession } from '/livebridge.js';
+
+      const el = (id) => document.getElementById(id);
+      const session = new LiveSession({ mode: 'audio', chimePreset: 'soft' });
+
+      async function refreshActions() {
+        const res = await fetch('/api/actions');
+        const list = await res.json();
+        const pane = el('actions');
+        pane.replaceChildren(
+          ...list.map((a) => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.textContent = a.owner ? `[${a.owner}] ${a.task}` : a.task;
+            return div;
+          }),
+        );
+      }
+
+      session.addEventListener('change', () => {
+        const active = session.isConnected && !session.isTerminating;
+        el('status').textContent = session.status;
+        el('start').disabled = session.isConnected || session.isTerminating;
+        el('mic').disabled = !active;
+        el('mic').textContent = session.isRecording ? 'Mute Mic' : 'Unmute Mic';
+        el('end').disabled = !active;
+        el('send').disabled = !active;
+
+        const pane = el('transcript');
+        pane.replaceChildren(
+          ...session.transcript.map((t) => {
+            const div = document.createElement('div');
+            div.className = `turn ${t.type}`;
+            div.textContent = t.text;
+            return div;
+          }),
+        );
+        pane.scrollTop = pane.scrollHeight;
+      });
+
+      el('start').onclick = () =>
+        session.connect({
+          endpoint: '/ws/live',
+          onProactiveAlert: (a) => {
+            el('alert-banner').textContent = `Incoming memo from ${a.source}: ${a.summary}`;
+          },
+          onToolCall: () => void refreshActions(),
+        });
+
+      el('mic').onclick = () => session.toggleMic();
+      el('end').onclick = () => session.terminate();
+      el('chime').onclick = () => {
+        const next = session.chime.cycleMode();
+        el('chime').textContent = `Chime: ${next}`;
+      };
+      el('memo').onclick = () =>
+        fetch('/api/memo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'canary-monitor',
+            subject: 'eu-west1 checkout p95 dropped 18% after connection-pool patch',
+            body: 'Rollout v2.14.3 steady at 50% traffic; 0 error budget burn.',
+          }),
+        });
+
+      el('prompt-form').onsubmit = (e) => {
+        e.preventDefault();
+        const input = el('prompt-input');
+        if (session.sendText(input.value)) input.value = '';
+      };
+
+      void refreshActions();
+    </script>
+  </body>
+</html>
