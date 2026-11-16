@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	port := envOr("PORT", "8095")
+	port := envOr("PORT", "8096")
 	liveModel := envOr("GEMINI_LIVE_MODEL", livebridge.DefaultModel)
 	agentID := envOr("GEMINI_MANAGED_AGENT", defaultManagedAgent)
 

@@ -20,7 +20,7 @@ Pairs a **stateless `livebridge` voice/avatar edge (`gemini-3.8-live`)** with an
 export GEMINI_API_KEY="your-api-key"          # Managed Agents v1beta + environment file download
 export GOOGLE_CLOUD_PROJECT="your-project-id" # Optional: enables talking video avatars on Vertex AI
 ../../run.sh antigravity-voice-desk
-# Opens Vite on http://localhost:5185 (proxying /ws to Go :8095)
+# Opens Vite on http://localhost:5185 (proxying /ws to Go :8096)
 ```
 
 ## Verify

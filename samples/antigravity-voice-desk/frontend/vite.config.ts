@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     port: 5185,
     proxy: {
-      '/ws': { target: 'ws://localhost:8095', ws: true },
+      '/ws': { target: 'ws://localhost:8096', ws: true },
     },
   },
 });
