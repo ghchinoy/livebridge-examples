@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -111,6 +112,56 @@ func TestAntigravityVoiceDesk_DelegatesStreamsStepsArtifactsAndAlertBus(t *testi
 	}
 	t.Errorf("newVoiceDeskMux(delegate_sandbox_task) upstream sawVideo=%v sawAlertText=%v, want both true",
 		liveSess.sawVideo, liveSess.sawAlertText)
+}
+
+func TestAutoDiscoverArtifact_FindsUnrequestedStockChartAndIgnoresVenvAssets(t *testing.T) {
+	filesSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1beta/environments/env-42/files":
+			w.Header().Set("Content-Type", "application/json")
+			if r.URL.Query().Get("page_token") == "p2" {
+				_, _ = w.Write([]byte(`{
+					"files": [
+						{"name":"goog_stock_price.png","path":"workspace/goog_stock_price.png","type":"FILE","mime_type":"image/png","modified":"2026-11-15T10:04:00Z"}
+					]
+				}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{
+				"files": [
+					{"name":"home.png","path":".venv/lib/python3.12/site-packages/matplotlib/mpl-data/images/home.png","type":"FILE","modified":"2026-11-15T10:05:00Z"},
+					{"name":"chart.png","path":"workspace/chart.png","type":"FILE","modified":"2026-11-15T09:00:00Z"}
+				],
+				"next_page_token": "p2"
+			}`))
+		case "/v1beta/environments/env-42/files/workspace/goog_stock_price.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte{0x89, 0x50, 0x4E, 0x47})
+		case "/v1beta/environments/env-42/files/workspace/chart.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("stale-chart"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer filesSrv.Close()
+
+	runner := &GenAIRunner{
+		apiKey:       "test-key",
+		filesBaseURL: filesSrv.URL,
+		httpClient:   filesSrv.Client(),
+	}
+	before := map[string]string{
+		"workspace/chart.png": "2026-11-15T09:00:00Z",
+	}
+
+	// Even if Gemini Live passed output_file="workspace/chart.png", unchanged
+	// Turn-1 chart.png must be skipped in favor of newly created goog_stock_price.png.
+	gotPath, gotMIME, gotBytes := runner.resolveAndDownloadArtifact(t.Context(), "env-42", "workspace/chart.png", before)
+	if gotPath != "workspace/goog_stock_price.png" || gotMIME != "image/png" || len(gotBytes) != 4 {
+		t.Errorf("resolveAndDownloadArtifact(env-42, \"workspace/chart.png\") = (%q, %q, %d bytes), want (\"workspace/goog_stock_price.png\", \"image/png\", 4 bytes)",
+			gotPath, gotMIME, len(gotBytes))
+	}
 }
 
 type fakeAgentRunner struct {

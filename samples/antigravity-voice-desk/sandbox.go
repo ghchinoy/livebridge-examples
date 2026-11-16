@@ -15,8 +15,10 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -37,7 +40,10 @@ import (
 	"github.com/ghchinoy/livebridge"
 )
 
-const defaultManagedAgent = "antigravity-preview-09-2026"
+const (
+	defaultManagedAgent  = "antigravity-preview-09-2026"
+	defaultGeminiAPIBase = "https://generativelanguage.googleapis.com"
+)
 
 // SandboxResult holds the completed output of a Managed Agent interaction.
 type SandboxResult struct {
@@ -68,10 +74,11 @@ type AgentRunner interface {
 // GenAIRunner implements AgentRunner on top of google.golang.org/genai's
 // native Interactions service plus the v1beta environment files endpoint.
 type GenAIRunner struct {
-	client     *genai.Client
-	apiKey     string
-	apiVersion string
-	httpClient *http.Client
+	client       *genai.Client
+	apiKey       string
+	apiVersion   string
+	filesBaseURL string
+	httpClient   *http.Client
 }
 
 // NewGenAIRunnerFromEnv constructs a GenAIRunner preferring GEMINI_API_KEY /
@@ -92,10 +99,11 @@ func NewGenAIRunnerFromEnv(ctx context.Context) (*GenAIRunner, error) {
 			return nil, fmt.Errorf("creating Gemini API interactions client: %w", err)
 		}
 		return &GenAIRunner{
-			client:     client,
-			apiKey:     apiKey,
-			apiVersion: "v1beta",
-			httpClient: &http.Client{Timeout: 60 * time.Second},
+			client:       client,
+			apiKey:       apiKey,
+			apiVersion:   "v1beta",
+			filesBaseURL: defaultGeminiAPIBase,
+			httpClient:   &http.Client{Timeout: 60 * time.Second},
 		}, nil
 	}
 
@@ -113,27 +121,38 @@ func NewGenAIRunnerFromEnv(ctx context.Context) (*GenAIRunner, error) {
 		return nil, fmt.Errorf("creating Cloud interactions client: %w", err)
 	}
 	return &GenAIRunner{
-		client:     client,
-		apiVersion: "v1beta1",
-		httpClient: &http.Client{Timeout: 60 * time.Second},
+		client:       client,
+		apiVersion:   "v1beta1",
+		filesBaseURL: defaultGeminiAPIBase,
+		httpClient:   &http.Client{Timeout: 60 * time.Second},
 	}, nil
 }
 
 // RunStream executes a streaming Managed Agent interaction, invokes onStep on
 // progress events, fetches the final Interaction metadata (for EnvironmentID),
-// and optionally downloads a generated file from the sandbox.
+// and downloads any explicit or newly generated PNG/JPEG chart from the sandbox.
 func (r *GenAIRunner) RunStream(
 	ctx context.Context,
 	agentID, prompt, environmentID, previousInteractionID, outputFile string,
 	onStep func(kind, summary, interactionID string),
 ) (SandboxResult, error) {
+	var beforeImages map[string]string
+	if strings.TrimSpace(environmentID) != "" && r.apiKey != "" {
+		beforeImages = r.snapshotImageFiles(ctx, environmentID)
+	}
+
+	effectivePrompt := prompt
+	if strings.TrimSpace(outputFile) != "" {
+		effectivePrompt += "\n\nIf you generate a chart or image, save it to " + strings.TrimSpace(outputFile) + "."
+	}
+
 	envTarget := "remote"
 	if strings.TrimSpace(environmentID) != "" {
 		envTarget = strings.TrimSpace(environmentID)
 	}
 	body := interactions.CreateAgentInteraction{
 		Agent:       interactions.AgentOption(agentID),
-		Input:       genai.Ptr(interactions.NewInteractionsInput(prompt)),
+		Input:       genai.Ptr(interactions.NewInteractionsInput(effectivePrompt)),
 		Environment: genai.Ptr(interactions.NewCreateAgentInteractionEnvironment(envTarget)),
 		Stream:      genai.Ptr(true),
 	}
@@ -175,15 +194,11 @@ func (r *GenAIRunner) RunStream(
 		}
 	}
 
-	if outputFile != "" && out.EnvironmentID != "" && r.apiKey != "" {
-		mime, data, dlErr := r.downloadSandboxFile(ctx, out.EnvironmentID, outputFile)
-		if dlErr != nil {
-			slog.Warn("downloading sandbox artifact", "path", outputFile, "err", dlErr)
-			return out, nil
-		}
-		out.ArtifactPath = outputFile
-		out.ArtifactMIME = mime
-		out.ArtifactBytes = data
+	if out.EnvironmentID != "" && r.apiKey != "" {
+		artPath, artMIME, artBytes := r.resolveAndDownloadArtifact(ctx, out.EnvironmentID, outputFile, beforeImages)
+		out.ArtifactPath = artPath
+		out.ArtifactMIME = artMIME
+		out.ArtifactBytes = artBytes
 	}
 	return out, nil
 }
@@ -281,7 +296,7 @@ func (sc *SandboxCoordinator) Registry() *livebridge.FuncRegistry {
 
 	reg.Register(&genai.FunctionDeclaration{
 		Name:        "delegate_sandbox_task",
-		Description: "Dispatches a coding, data analysis, chart generation, file manipulation, or web research task to the isolated Antigravity Linux sandbox in the background. Returns immediately with a job_id while progress chimes stream via AlertBus.",
+		Description: "Dispatches a coding, data analysis, chart generation, file manipulation, or web research task to the isolated Antigravity Linux sandbox in the background. Any PNG/JPEG chart saved in the sandbox is automatically discovered and displayed upon completion.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
@@ -291,7 +306,7 @@ func (sc *SandboxCoordinator) Registry() *livebridge.FuncRegistry {
 				},
 				"output_file": {
 					Type:        genai.TypeString,
-					Description: "Optional relative PNG/JPEG path inside the sandbox (e.g. 'workspace/chart.png') to fetch and display upon completion.",
+					Description: "Optional preferred PNG/JPEG path inside the sandbox (e.g. 'workspace/chart.png'). If omitted, any newly generated PNG/JPEG chart is auto-detected.",
 				},
 				"fresh_environment": {
 					Type:        genai.TypeBoolean,
@@ -314,7 +329,7 @@ func (sc *SandboxCoordinator) Registry() *livebridge.FuncRegistry {
 			"job_id":         jobID,
 			"agent":          sc.agentID,
 			"environment_id": envID,
-			"note":           "Briefly tell the user the sandbox task has started; you will receive a background alert as soon as it finishes.",
+			"note":           "Briefly tell the user the sandbox task has started; you will receive a background alert and visual frame as soon as it finishes.",
 		}, nil
 	})
 
@@ -347,6 +362,202 @@ func (sc *SandboxCoordinator) Registry() *livebridge.FuncRegistry {
 	})
 
 	return reg
+}
+
+type sandboxFileEntry struct {
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	Type     string `json:"type"`
+	MimeType string `json:"mime_type"`
+	Created  string `json:"created"`
+	Modified string `json:"modified"`
+}
+
+type sandboxFilesEnvelope struct {
+	Files         []sandboxFileEntry `json:"files"`
+	NextPageToken string             `json:"next_page_token"`
+}
+
+func (r *GenAIRunner) resolveAndDownloadArtifact(
+	ctx context.Context,
+	envID, requestedFile string,
+	beforeImages map[string]string,
+) (string, string, []byte) {
+	trimmed := strings.TrimPrefix(strings.TrimSpace(requestedFile), "/")
+	var reqCandidates []string
+	if trimmed != "" {
+		reqCandidates = append(reqCandidates, trimmed)
+		if !strings.HasPrefix(trimmed, "workspace/") {
+			reqCandidates = append(reqCandidates, "workspace/"+trimmed)
+		}
+	}
+
+	// 1. Query recursive environment file listing so we detect newly created or
+	// modified charts (even when output_file was omitted or Antigravity chose a
+	// custom filename such as goog_stock.png) and avoid stale previous-turn files.
+	entries, err := r.listSandboxFilesRecursive(ctx, envID)
+	if err != nil {
+		slog.Debug("listing sandbox files for artifact auto-discovery", "err", err)
+	}
+	if err == nil {
+		chosen := pickNewestArtifactPath(entries, beforeImages, reqCandidates)
+		if chosen != "" {
+			mime, data, dlErr := r.downloadSandboxFile(ctx, envID, chosen)
+			if dlErr == nil && len(data) > 0 {
+				return chosen, mime, data
+			}
+			slog.Warn("downloading auto-discovered sandbox artifact", "path", chosen, "err", dlErr)
+		}
+	}
+
+	// 2. Fallback to explicit output_file candidates if listing was unavailable,
+	// skipping any path known to be unchanged since before the interaction.
+	for _, candidate := range reqCandidates {
+		if _, existedUnchanged := beforeImages[candidate]; existedUnchanged {
+			continue
+		}
+		if mime, data, err := r.downloadSandboxFile(ctx, envID, candidate); err == nil && len(data) > 0 {
+			return candidate, mime, data
+		}
+	}
+	return "", "", nil
+}
+
+func (r *GenAIRunner) snapshotImageFiles(ctx context.Context, envID string) map[string]string {
+	entries, err := r.listSandboxFilesRecursive(ctx, envID)
+	if err != nil {
+		return nil
+	}
+	snap := make(map[string]string)
+	for _, f := range entries {
+		if isCandidateArtifact(f) {
+			snap[f.Path] = cmp.Or(f.Modified, f.Created)
+		}
+	}
+	return snap
+}
+
+func (r *GenAIRunner) listSandboxFilesRecursive(ctx context.Context, envID string) ([]sandboxFileEntry, error) {
+	base := strings.TrimRight(cmp.Or(r.filesBaseURL, defaultGeminiAPIBase), "/")
+	var all []sandboxFileEntry
+	pageToken := ""
+
+	for range 10 {
+		q := url.Values{
+			"recursive": {"true"},
+			"page_size": {"500"},
+		}
+		if pageToken != "" {
+			q.Set("page_token", pageToken)
+		}
+		listURL := fmt.Sprintf("%s/v1beta/environments/%s/files?%s", base, url.PathEscape(envID), q.Encode())
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, listURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("x-goog-api-key", r.apiKey)
+
+		resp, err := r.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			_ = resp.Body.Close()
+			return nil, fmt.Errorf("list sandbox files status %d", resp.StatusCode)
+		}
+		var env sandboxFilesEnvelope
+		decErr := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&env)
+		_ = resp.Body.Close()
+		if decErr != nil {
+			return nil, decErr
+		}
+		all = append(all, env.Files...)
+		if env.NextPageToken == "" {
+			break
+		}
+		pageToken = env.NextPageToken
+	}
+	return all, nil
+}
+
+func pickNewestArtifactPath(entries []sandboxFileEntry, before map[string]string, preferred []string) string {
+	var fresh []sandboxFileEntry
+	for _, f := range entries {
+		if !isCandidateArtifact(f) {
+			continue
+		}
+		stamp := cmp.Or(f.Modified, f.Created)
+		if prev, existed := before[f.Path]; existed && prev == stamp {
+			continue
+		}
+		fresh = append(fresh, f)
+	}
+	if len(fresh) == 0 {
+		return ""
+	}
+	for _, want := range preferred {
+		for _, f := range fresh {
+			if f.Path == want {
+				return f.Path
+			}
+		}
+	}
+	slices.SortFunc(fresh, func(a, b sandboxFileEntry) int {
+		ta := parseFileTime(cmp.Or(a.Modified, a.Created))
+		tb := parseFileTime(cmp.Or(b.Modified, b.Created))
+		if !ta.Equal(tb) {
+			if ta.After(tb) {
+				return -1
+			}
+			return 1
+		}
+		// Prefer files saved inside workspace/ on identical timestamps.
+		aw := strings.HasPrefix(a.Path, "workspace/")
+		bw := strings.HasPrefix(b.Path, "workspace/")
+		if aw != bw {
+			if aw {
+				return -1
+			}
+			return 1
+		}
+		return strings.Compare(a.Path, b.Path)
+	})
+	return fresh[0].Path
+}
+
+func isCandidateArtifact(f sandboxFileEntry) bool {
+	if !strings.EqualFold(f.Type, "FILE") && f.Type != "" {
+		return false
+	}
+	p := strings.TrimPrefix(f.Path, "/")
+	if p == "" {
+		return false
+	}
+	// Exclude hidden dirs, Python virtualenvs/matplotlib icon assets, and node_modules.
+	excluded := []string{
+		"/.", "node_modules/", "site-packages/", "dist-packages/",
+		"mpl-data/", "/usr/", "/lib/", "/etc/", "/var/", "/proc/", "__pycache__/",
+	}
+	wrapped := "/" + p
+	for _, skip := range excluded {
+		if strings.Contains(wrapped, skip) {
+			return false
+		}
+	}
+	lower := strings.ToLower(p)
+	if strings.HasSuffix(lower, ".png") || strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") {
+		return true
+	}
+	mime := strings.ToLower(strings.TrimSpace(f.MimeType))
+	return mime == "image/png" || mime == "image/jpeg"
+}
+
+func parseFileTime(raw string) time.Time {
+	t, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(raw))
+	if err != nil {
+		return time.Time{}
+	}
+	return t
 }
 
 func consumeInteractionResponse(
@@ -402,8 +613,10 @@ func (r *GenAIRunner) downloadSandboxFile(ctx context.Context, envID, filePath s
 	if cleaned == "" || cleaned == "." {
 		return "", nil, errors.New("empty sandbox file path")
 	}
+	base := cmp.Or(r.filesBaseURL, defaultGeminiAPIBase)
 	dlURL := fmt.Sprintf(
-		"https://generativelanguage.googleapis.com/v1beta/environments/%s/files/%s?alt=media",
+		"%s/v1beta/environments/%s/files/%s?alt=media",
+		strings.TrimRight(base, "/"),
 		url.PathEscape(envID),
 		cleaned,
 	)
