@@ -76,7 +76,6 @@ type AgentRunner interface {
 type GenAIRunner struct {
 	client       *genai.Client
 	apiKey       string
-	apiVersion   string
 	filesBaseURL string
 	httpClient   *http.Client
 }
@@ -101,7 +100,6 @@ func NewGenAIRunnerFromEnv(ctx context.Context) (*GenAIRunner, error) {
 		return &GenAIRunner{
 			client:       client,
 			apiKey:       apiKey,
-			apiVersion:   "v1beta",
 			filesBaseURL: defaultGeminiAPIBase,
 			httpClient:   &http.Client{Timeout: 60 * time.Second},
 		}, nil
@@ -111,6 +109,10 @@ func NewGenAIRunnerFromEnv(ctx context.Context) (*GenAIRunner, error) {
 	if projectID == "" {
 		return nil, errors.New("missing GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT for Managed Agents")
 	}
+	slog.Warn("GEMINI_API_KEY is unset; Antigravity Managed Agents and chart downloads require GEMINI_API_KEY",
+		"fallbackBackend", "VertexAI",
+		"project", projectID,
+	)
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		Backend:     genai.BackendVertexAI,
 		Project:     projectID,
@@ -122,7 +124,6 @@ func NewGenAIRunnerFromEnv(ctx context.Context) (*GenAIRunner, error) {
 	}
 	return &GenAIRunner{
 		client:       client,
-		apiVersion:   "v1beta1",
 		filesBaseURL: defaultGeminiAPIBase,
 		httpClient:   &http.Client{Timeout: 60 * time.Second},
 	}, nil
@@ -161,8 +162,7 @@ func (r *GenAIRunner) RunStream(
 	}
 
 	res, err := r.client.Interactions.Create(ctx, operations.CreateInteractionRequest{
-		APIVersion: genai.Ptr(r.apiVersion),
-		Body:       operations.NewCreateInteractionRequestBody(body),
+		Body: operations.NewCreateInteractionRequestBody(body),
 	})
 	if err != nil {
 		return SandboxResult{}, fmt.Errorf("starting managed agent interaction: %w", err)
@@ -181,8 +181,7 @@ func (r *GenAIRunner) RunStream(
 
 	if interactionID != "" {
 		full, getErr := r.client.Interactions.Get(ctx, operations.GetInteractionByIDRequest{
-			APIVersion: genai.Ptr(r.apiVersion),
-			ID:         interactionID,
+			ID: interactionID,
 		})
 		if getErr == nil && full.Interaction != nil {
 			if full.Interaction.EnvironmentID != nil && *full.Interaction.EnvironmentID != "" {
@@ -209,8 +208,7 @@ func (r *GenAIRunner) Cancel(ctx context.Context, interactionID string) error {
 		return nil
 	}
 	_, err := r.client.Interactions.Cancel(ctx, operations.CancelInteractionByIDRequest{
-		APIVersion: genai.Ptr(r.apiVersion),
-		ID:         interactionID,
+		ID: interactionID,
 	})
 	return err
 }

@@ -4,8 +4,21 @@
 
 - **Boundary between repos:**
   - `~/projects/livebridge` (`ghchinoy/livebridge`) owns the core Go switchboard, `livebridge/browser`, `@ghchinoy/livebridge` (+ `/lit`), Diátaxis docs, and 4 minimal CI-gated API recipes (`examples/01`–`04`).
-  - `~/projects/livebridge-examples` (`ghchinoy/livebridge-examples`) owns full multi-framework external apps (`visual-concierge` Lit 3, `whiteboard-architect` Vanilla TS, `bilingual-coach` React 19, `pocket-briefing` Zero-Node Go) consuming published `proxy.golang.org` and `npmjs.com` releases with zero `go.work` or `replace` directives.
+  - `~/projects/livebridge-examples` (`ghchinoy/livebridge-examples`) owns full multi-framework external apps (`visual-concierge` Lit 3, `whiteboard-architect` Vanilla TS, `bilingual-coach` React 19, `pocket-briefing` Zero-Node Go, `antigravity-voice-desk` Lit 3 + Managed Agents) consuming published `proxy.golang.org` and `npmjs.com` releases with zero `go.work` or `replace` directives.
 - **Release canary workflow:** Before publishing a new `livebridge` version, run `make use-tarball && make verify` here; after publishing to npm, run `make use-npm VERSION=<x.y.z> && make verify` so committed `package.json` files track the public npm release.
+
+## UI Design System Guardrails (`@ghchinoy/lustrous-lit`)
+
+Samples use [`@ghchinoy/lustrous-lit`](https://github.com/ghchinoy/lustrous-lit) for consistent, WCAG 2.1 AA light/dark UX **without obscuring `livebridge` as the primary subject**:
+
+1. **`livebridge` First (Top-of-File Rule):** Every sample entry module must open with `livebridge` wiring (`LiveSessionController` / `LiveSession`, `WebmcpToolHost`, media capture, tool handlers) at the top of the file under `// ── 1. Livebridge Session, Media & Tool Wiring ──`, before `// ── 2. Lustrous UI Presentation ──`. Keep component-local CSS minimal (`≤ 35` lines, placed at the bottom) so readers never scroll past layout styling to reach `livebridge`.
+2. **Zero Wrapper Abstractions Over `livebridge`:** Never hide `LiveSession`, `LiveSessionController`, `WebmcpToolHost`, or `session.transcript` inside custom UI wrapper components or cross-sample `../../shared/` modules. Every directory under `samples/` must remain standalone and copy-pasteable.
+3. **Stack-Respecting Adoption (3 Tiers):**
+   - **Lit 3 (`visual-concierge`, `antigravity-voice-desk`):** Full idiomatic Lustrous (`LustrousElement`, layout/control primitives, `@ghchinoy/lustrous-lit/theme.css` + `fonts.css`).
+   - **Non-Lit Vite (`whiteboard-architect` Vanilla TS, `bilingual-coach` React 19):** Keep host code 100% idiomatic to Vanilla TS or React 19 (zero `LitElement` authoring); use `--lustrous-*` CSS tokens plus leaf `<lustrous-*>` custom elements where they remove inline style boilerplate.
+   - **Zero-Node Go (`pocket-briefing`):** Preserve zero Node/npm dependencies; align embedded CSS custom properties with Lustrous tokens only.
+4. **Sample-Sized Chrome Only:** Keep headers lightweight (title, framework badge, session status badge, Light/Dark/System theme toggle)—no multi-page routers, navigation sidebars, or app-shell ceremony.
+5. **Public Registry Invariant:** Committed `package.json` files must resolve both `@ghchinoy/livebridge` and `@ghchinoy/lustrous-lit` from public `npmjs.com` so `make install && make verify` passes on a clean clone.
 
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 

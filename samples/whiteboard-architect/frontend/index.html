@@ -14,119 +14,167 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<html lang="en">
+<html lang="en" data-theme="system" class="lustrous-root">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Whiteboard Architect — Vanilla TS + @ghchinoy/livebridge</title>
     <style>
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: #090d16;
-        color: #f8fafc;
-        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-        padding: 1.2rem;
-      }
-      .layout {
-        max-width: 1180px;
-        margin: 0 auto;
+      .board-grid {
         display: grid;
-        grid-template-columns: 672px 1fr;
-        gap: 1.1rem;
+        grid-template-columns: minmax(0, 672px) minmax(0, 1fr);
+        gap: var(--lustrous-space-l);
+        align-items: start;
       }
-      @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
-      .card {
-        background: #111827;
-        border: 1px solid #1f2937;
-        border-radius: 16px;
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.8rem;
+      @media (max-width: 1060px) {
+        .board-grid {
+          grid-template-columns: 1fr;
+        }
       }
       canvas#board {
         width: 100%;
         aspect-ratio: 640 / 400;
-        background: #030712;
-        border-radius: 12px;
-        border: 1px solid #334155;
+        border-radius: var(--lustrous-radius-l);
+        border: 1px solid var(--lustrous-color-outline-variant);
         cursor: crosshair;
         touch-action: none;
+        display: block;
       }
       canvas#spectrum {
         width: 100%;
         height: 44px;
-        background: #030712;
-        border-radius: 8px;
+        border-radius: var(--lustrous-radius-m);
+        border: 1px solid var(--lustrous-color-outline-variant);
+        display: block;
       }
-      .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-      button {
-        padding: 0.48rem 0.9rem;
-        border-radius: 999px;
-        border: 1px solid #334155;
-        background: #1e293b;
-        color: #f8fafc;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      button.primary { background: #38bdf8; color: #082f49; border-color: transparent; }
-      button:disabled { opacity: 0.45; cursor: not-allowed; }
-      #transcript {
+      .transcript {
         height: 330px;
-        overflow-y: auto;
-        background: #030712;
-        border-radius: 12px;
-        padding: 0.8rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
       }
-      .turn { padding: 0.5rem 0.75rem; border-radius: 10px; max-width: 88%; font-size: 0.88rem; }
-      .turn.user { align-self: flex-end; background: #1d4ed8; }
-      .turn.assistant { align-self: flex-start; background: #1e293b; }
-      .turn.tool { align-self: stretch; background: #0f172a; border: 1px solid #334155; font-family: ui-monospace, monospace; font-size: 0.76rem; }
-      input {
-        flex: 1;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-        border: 1px solid #334155;
-        background: #030712;
-        color: #f8fafc;
+      .turn {
+        max-width: 88%;
+        align-self: flex-start;
       }
-      .meta { font-size: 0.78rem; color: #94a3b8; }
+      .turn.user {
+        align-self: flex-end;
+      }
+      .turn.tool {
+        max-width: 100%;
+        align-self: stretch;
+      }
     </style>
   </head>
   <body>
-    <div class="layout">
-      <section class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong>Shared Architecture Whiteboard (Draw Freehand + Voice WebMCP)</strong>
-          <button id="clear-btn">Clear Ink &amp; Nodes</button>
-        </div>
-        <canvas id="board" width="640" height="400"></canvas>
-        <div class="meta" id="timing">Draw on the canvas with your mouse—each stroke sends a live JPEG snapshot to Gemini.</div>
-      </section>
+    <lustrous-flex
+      direction="column"
+      gap="l"
+      padding="l"
+      mobile-padding="m"
+      max-width="1240"
+      margin-inline="auto"
+    >
+      <lustrous-flex align="center" justify="space-between" gap="m" wrap="wrap">
+        <lustrous-flex align="center" gap="s" wrap="wrap">
+          <lustrous-text variant="headline-medium" heading="1">
+            Whiteboard Architect
+          </lustrous-text>
+          <lustrous-badge tone="cobalt">Vanilla TS</lustrous-badge>
+          <lustrous-badge id="status" tone="default">Idle</lustrous-badge>
+        </lustrous-flex>
+        <lustrous-segmented-control
+          id="theme-toggle"
+          size="s"
+          label="Color theme"
+        ></lustrous-segmented-control>
+      </lustrous-flex>
 
-      <section class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong>Whiteboard Architect (Vanilla TS)</strong>
-          <span id="status" class="meta">Idle</span>
-        </div>
-        <canvas id="spectrum" width="380" height="44"></canvas>
-        <div class="row">
-          <button id="start-btn" class="primary">Connect Architect</button>
-          <button id="mic-btn" disabled>Mute Mic</button>
-          <button id="mute-btn" disabled>Mute Speaker</button>
-          <button id="end-btn" disabled>End</button>
-        </div>
-        <div id="transcript" aria-live="polite"></div>
-        <form id="prompt-form" class="row">
-          <input id="prompt-input" placeholder="e.g. Diagram a CDN -> API Gateway -> Worker Queue -> Postgres flow" />
-          <button type="submit" id="send-btn" disabled>Send</button>
-        </form>
-      </section>
-    </div>
+      <div class="board-grid">
+        <lustrous-flex
+          direction="column"
+          gap="m"
+          padding="l"
+          background="surface-bright"
+          border
+          border-radius="xl"
+          shadow="1"
+        >
+          <lustrous-flex align="center" justify="space-between" gap="s" wrap="wrap">
+            <lustrous-text variant="headline-small" heading="2">
+              Shared Architecture Canvas
+            </lustrous-text>
+            <lustrous-button id="clear-btn" variant="outline" size="s" icon="delete">
+              Clear Ink &amp; Nodes
+            </lustrous-button>
+          </lustrous-flex>
+          <canvas id="board" width="640" height="400"></canvas>
+          <lustrous-text id="timing" variant="body-small" muted>
+            Draw on the canvas with your mouse—each stroke sends a live JPEG snapshot to Gemini.
+          </lustrous-text>
+        </lustrous-flex>
+
+        <lustrous-flex
+          direction="column"
+          gap="m"
+          padding="l"
+          background="surface-bright"
+          border
+          border-radius="xl"
+          shadow="1"
+        >
+          <lustrous-text variant="headline-small" heading="2">
+            Voice WebMCP &amp; Transcript
+          </lustrous-text>
+          <lustrous-banner
+            id="warning-banner"
+            variant="warning"
+            icon="warning"
+            layout="row"
+            hidden
+          ></lustrous-banner>
+          <canvas id="spectrum" width="380" height="44"></canvas>
+          <lustrous-flex wrap="wrap" gap="s" align="center">
+            <lustrous-button id="start-btn" variant="accent" size="s" icon="play">
+              Connect Architect
+            </lustrous-button>
+            <lustrous-togglable-button id="mic-btn" size="s" icon="micOff" disabled>
+              Unmute Mic
+            </lustrous-togglable-button>
+            <lustrous-togglable-button id="mute-btn" size="s" icon="volumeUp" disabled>
+              Mute Speaker
+            </lustrous-togglable-button>
+            <lustrous-button id="end-btn" variant="outline" size="s" icon="stop" disabled>
+              End
+            </lustrous-button>
+          </lustrous-flex>
+          <lustrous-scrollable-box
+            id="transcript-box"
+            class="transcript"
+            scrim="both"
+            label="Conversation transcript"
+            background="surface-dim"
+            border
+            border-radius="l"
+            padding="m"
+            aria-live="polite"
+          >
+            <lustrous-flex id="transcript" direction="column" gap="s"></lustrous-flex>
+          </lustrous-scrollable-box>
+          <lustrous-flex gap="s" align="center">
+            <lustrous-flex-item grow="1" min-width="0">
+              <lustrous-text-input
+                id="prompt-input"
+                size="s"
+                aria-label="Architecture prompt"
+                placeholder="e.g. Diagram a CDN -> API Gateway -> Worker Queue -> Postgres flow"
+                disabled
+              ></lustrous-text-input>
+            </lustrous-flex-item>
+            <lustrous-button id="send-btn" size="s" icon="send" disabled>
+              Send
+            </lustrous-button>
+          </lustrous-flex>
+        </lustrous-flex>
+      </div>
+    </lustrous-flex>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

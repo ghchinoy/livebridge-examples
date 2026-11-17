@@ -14,106 +14,220 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<html lang="en">
+<html lang="en" data-theme="system">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pocket Briefing — Zero-Node Go + livebridge/browser</title>
     <style>
+      @layer lustrous {
+        :root,
+        [data-theme="light"] {
+          color-scheme: light;
+          --lustrous-color-background: #f8fafc;
+          --lustrous-color-on-background: #0f172a;
+          --lustrous-color-surface: #ffffff;
+          --lustrous-color-surface-bright: #ffffff;
+          --lustrous-color-surface-dim: #f1f5f9;
+          --lustrous-color-surface-container: #f1f5f9;
+          --lustrous-color-surface-container-high: #e2e8f0;
+          --lustrous-color-on-surface: #0f172a;
+          --lustrous-color-on-surface-variant: #475569;
+          --lustrous-color-outline: #64748b;
+          --lustrous-color-outline-variant: #cbd5e1;
+          --lustrous-color-accent: #1d4ed8;
+          --lustrous-color-on-accent: #ffffff;
+          --lustrous-color-primary-container: #dbeafe;
+          --lustrous-color-on-primary-container: #1e3a8a;
+          --lustrous-color-positive-container: #d1fae5;
+          --lustrous-color-on-positive-container: #065f46;
+          --lustrous-color-warning-container: #fef3c7;
+          --lustrous-color-on-warning-container: #92400e;
+          --lustrous-color-code-background: #0f172a;
+          --lustrous-color-code-text: #e2e8f0;
+          --lustrous-color-category-cobalt: #dbeafe;
+          --lustrous-color-on-category-cobalt: #1e40af;
+          --lustrous-elevation-level1: 0 1px 2px 0 rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+        }
+        [data-theme="dark"] {
+          color-scheme: dark;
+          --lustrous-color-background: #0b0f17;
+          --lustrous-color-on-background: #e2e8f0;
+          --lustrous-color-surface: #111827;
+          --lustrous-color-surface-bright: #1f2937;
+          --lustrous-color-surface-dim: #0d131f;
+          --lustrous-color-surface-container: #1a2336;
+          --lustrous-color-surface-container-high: #232f46;
+          --lustrous-color-on-surface: #f1f5f9;
+          --lustrous-color-on-surface-variant: #94a3b8;
+          --lustrous-color-outline: #8496ae;
+          --lustrous-color-outline-variant: #334155;
+          --lustrous-color-accent: #60a5fa;
+          --lustrous-color-on-accent: #081226;
+          --lustrous-color-primary-container: #1e3a8a;
+          --lustrous-color-on-primary-container: #dbeafe;
+          --lustrous-color-positive-container: #064e3b;
+          --lustrous-color-on-positive-container: #d1fae5;
+          --lustrous-color-warning-container: #78350f;
+          --lustrous-color-on-warning-container: #fef3c7;
+          --lustrous-color-code-background: #090d16;
+          --lustrous-color-code-text: #e2e8f0;
+          --lustrous-color-category-cobalt: #172554;
+          --lustrous-color-on-category-cobalt: #bfdbfe;
+          --lustrous-elevation-level1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+        }
+        @media (prefers-color-scheme: dark) {
+          [data-theme="system"] {
+            color-scheme: dark;
+            --lustrous-color-background: #0b0f17;
+            --lustrous-color-on-background: #e2e8f0;
+            --lustrous-color-surface: #111827;
+            --lustrous-color-surface-bright: #1f2937;
+            --lustrous-color-surface-dim: #0d131f;
+            --lustrous-color-surface-container: #1a2336;
+            --lustrous-color-surface-container-high: #232f46;
+            --lustrous-color-on-surface: #f1f5f9;
+            --lustrous-color-on-surface-variant: #94a3b8;
+            --lustrous-color-outline: #8496ae;
+            --lustrous-color-outline-variant: #334155;
+            --lustrous-color-accent: #60a5fa;
+            --lustrous-color-on-accent: #081226;
+            --lustrous-color-primary-container: #1e3a8a;
+            --lustrous-color-on-primary-container: #dbeafe;
+            --lustrous-color-positive-container: #064e3b;
+            --lustrous-color-on-positive-container: #d1fae5;
+            --lustrous-color-warning-container: #78350f;
+            --lustrous-color-on-warning-container: #fef3c7;
+            --lustrous-color-code-background: #090d16;
+            --lustrous-color-code-text: #e2e8f0;
+            --lustrous-color-category-cobalt: #172554;
+            --lustrous-color-on-category-cobalt: #bfdbfe;
+            --lustrous-elevation-level1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+          }
+        }
+      }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #090d16;
-        color: #f8fafc;
+        background: var(--lustrous-color-background);
+        color: var(--lustrous-color-on-background);
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-        padding: 1.25rem;
+        padding: 20px;
       }
-      .grid {
-        max-width: 1080px;
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 1.1rem;
+      .shell { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+      .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+      h2 { margin: 0; font-size: 18px; font-weight: 600; }
+      .badge {
+        display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+        border-radius: 9999px; font-size: 12px; font-weight: 600;
+        background: var(--lustrous-color-surface-container-high); color: var(--lustrous-color-on-surface);
       }
-      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+      .badge.cobalt { background: var(--lustrous-color-category-cobalt); color: var(--lustrous-color-on-category-cobalt); }
+      .badge.positive { background: var(--lustrous-color-positive-container); color: var(--lustrous-color-on-positive-container); }
+      .badge.warning { background: var(--lustrous-color-warning-container); color: var(--lustrous-color-on-warning-container); }
+      .segmented {
+        display: inline-flex; padding: 2px; border-radius: 9999px;
+        background: var(--lustrous-color-surface-container); border: 1px solid var(--lustrous-color-outline-variant);
+      }
+      .segmented button {
+        border: 0; background: transparent; color: var(--lustrous-color-on-surface-variant);
+        border-radius: 9999px; padding: 5px 12px; font-size: 13px; font-weight: 500; cursor: pointer;
+      }
+      .segmented button[aria-pressed="true"] {
+        background: var(--lustrous-color-surface-bright); color: var(--lustrous-color-on-surface);
+        box-shadow: var(--lustrous-elevation-level1);
+      }
+      .grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
       .card {
-        background: #111827;
-        border: 1px solid #1f2937;
-        border-radius: 16px;
-        padding: 1.1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.85rem;
+        background: var(--lustrous-color-surface-bright); border: 1px solid var(--lustrous-color-outline-variant);
+        border-radius: 20px; padding: 20px; box-shadow: var(--lustrous-elevation-level1);
+        display: flex; flex-direction: column; gap: 14px;
       }
-      .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-      button {
-        padding: 0.48rem 0.9rem;
-        border-radius: 999px;
-        border: 1px solid #334155;
-        background: #1e293b;
-        color: #f8fafc;
-        font-weight: 600;
-        cursor: pointer;
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .btn {
+        height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--lustrous-color-outline-variant);
+        background: var(--lustrous-color-surface-container-high); color: var(--lustrous-color-on-surface);
+        font-size: 13px; font-weight: 600; cursor: pointer;
       }
-      button.primary { background: #38bdf8; color: #082f49; border-color: transparent; }
-      button.warn { background: #f59e0b; color: #451a03; border-color: transparent; }
-      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      .btn.accent { background: var(--lustrous-color-accent); color: var(--lustrous-color-on-accent); border-color: transparent; }
+      .btn.outline { background: transparent; border-color: var(--lustrous-color-outline); }
+      .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .btn:focus-visible, input:focus-visible { outline: 2px solid var(--lustrous-color-accent); outline-offset: 2px; }
+      .banner {
+        padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 500;
+        background: var(--lustrous-color-warning-container); color: var(--lustrous-color-on-warning-container);
+      }
+      .banner[hidden] { display: none; }
       #transcript {
-        height: 360px;
-        overflow-y: auto;
-        background: #030712;
-        border-radius: 12px;
-        padding: 0.85rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.55rem;
+        height: 380px; overflow-y: auto; background: var(--lustrous-color-surface-dim);
+        border: 1px solid var(--lustrous-color-outline-variant); border-radius: 14px;
+        padding: 14px; display: flex; flex-direction: column; gap: 8px;
       }
-      .turn { padding: 0.5rem 0.75rem; border-radius: 10px; max-width: 88%; font-size: 0.9rem; }
-      .turn.user { align-self: flex-end; background: #1d4ed8; }
-      .turn.assistant { align-self: flex-start; background: #1e293b; }
-      .turn.tool { align-self: stretch; background: #0f172a; border: 1px solid #334155; font-family: ui-monospace, monospace; font-size: 0.78rem; }
-      input {
-        flex: 1;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-        border: 1px solid #334155;
-        background: #030712;
-        color: #f8fafc;
+      .turn { padding: 8px 12px; border-radius: 10px; max-width: 88%; font-size: 14px; line-height: 1.45; align-self: flex-start; background: var(--lustrous-color-surface-container); }
+      .turn.user { align-self: flex-end; background: var(--lustrous-color-primary-container); color: var(--lustrous-color-on-primary-container); }
+      .turn.tool {
+        max-width: 100%; align-self: stretch; background: var(--lustrous-color-code-background);
+        color: var(--lustrous-color-code-text); border: 1px solid var(--lustrous-color-outline-variant);
+        font-family: ui-monospace, monospace; font-size: 12.5px;
       }
-      .item { padding: 0.6rem 0.75rem; border-radius: 10px; background: #030712; border: 1px solid #1e293b; font-size: 0.86rem; }
-      .meta { font-size: 0.78rem; color: #94a3b8; }
+      input[type="text"], #prompt-input {
+        flex: 1; min-width: 0; height: 36px; padding: 0 12px; border-radius: 10px;
+        border: 1px solid var(--lustrous-color-outline); background: var(--lustrous-color-surface);
+        color: var(--lustrous-color-on-surface); font-size: 14px;
+      }
+      .item {
+        padding: 10px 12px; border-radius: 10px; background: var(--lustrous-color-surface-container);
+        border: 1px solid var(--lustrous-color-outline-variant); font-size: 13.5px;
+      }
+      .meta { font-size: 13px; color: var(--lustrous-color-on-surface-variant); line-height: 1.4; }
     </style>
   </head>
   <body>
-    <div class="grid">
-      <section class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong>Pocket Briefing (Zero-Node Go + livebridge/browser)</strong>
-          <span id="status" class="meta">Idle</span>
+    <div class="shell">
+      <header class="header">
+        <div class="title-row">
+          <h1>Pocket Briefing</h1>
+          <span class="badge cobalt">Zero-Node Go</span>
+          <span id="status" class="badge">Idle</span>
         </div>
-        <div class="row">
-          <button id="start" class="primary">Connect Briefing Desk</button>
-          <button id="mic" disabled>Mute Mic</button>
-          <button id="chime">Chime: soft</button>
-          <button id="memo" class="warn">Drop Sample Memo</button>
-          <button id="end" disabled>End</button>
+        <div class="segmented" role="group" aria-label="Color theme">
+          <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
         </div>
-        <div id="alert-banner" class="meta" style="color:#fcd34d"></div>
-        <div id="transcript" aria-live="polite"></div>
-        <form id="prompt-form" class="row">
-          <input id="prompt-input" placeholder="e.g. Save an action item to review canary latency with SRE" />
-          <button type="submit" id="send" disabled>Send</button>
-        </form>
-      </section>
+      </header>
 
-      <aside class="card">
-        <strong>Captured Action Items</strong>
-        <div class="meta">Drop any <code>.md</code> or <code>.txt</code> file into <code>./inbox/</code> to trigger a spoken briefing.</div>
-        <div id="actions" style="display:flex;flex-direction:column;gap:0.5rem"></div>
-      </aside>
+      <div class="grid">
+        <section class="card">
+          <h2>Briefing Desk &amp; Transcript</h2>
+          <div class="row">
+            <button id="start" class="btn accent">Connect Briefing Desk</button>
+            <button id="mic" class="btn" disabled>Mute Mic</button>
+            <button id="chime" class="btn outline">Chime: soft</button>
+            <button id="memo" class="btn outline">Drop Sample Memo</button>
+            <button id="end" class="btn outline" disabled>End</button>
+          </div>
+          <div id="alert-banner" class="banner" hidden></div>
+          <div id="transcript" aria-live="polite"></div>
+          <form id="prompt-form" class="row">
+            <input id="prompt-input" placeholder="e.g. Save an action item to review canary latency with SRE" />
+            <button type="submit" id="send" class="btn accent" disabled>Send</button>
+          </form>
+        </section>
+
+        <aside class="card">
+          <h2>Captured Action Items</h2>
+          <div class="meta">Drop any <code>.md</code> or <code>.txt</code> file into <code>./inbox/</code> to trigger a spoken briefing.</div>
+          <div id="actions" style="display:flex;flex-direction:column;gap:8px"></div>
+        </aside>
+      </div>
     </div>
 
     <script type="module">
+      // ── 1. Livebridge Zero-Node Browser Client & AlertBus Wiring ──────────
       import { LiveSession } from '/livebridge.js';
 
       const el = (id) => document.getElementById(id);
@@ -135,7 +249,15 @@
 
       session.addEventListener('change', () => {
         const active = session.isConnected && !session.isTerminating;
-        el('status').textContent = session.status;
+        const statusEl = el('status');
+        statusEl.textContent = session.status;
+        statusEl.className = active ? 'badge positive' : session.isTerminating ? 'badge warning' : 'badge';
+
+        if (session.lastWarning) {
+          el('alert-banner').textContent = session.lastWarning;
+          el('alert-banner').hidden = false;
+        }
+
         el('start').disabled = session.isConnected || session.isTerminating;
         el('mic').disabled = !active;
         el('mic').textContent = session.isRecording ? 'Mute Mic' : 'Unmute Mic';
@@ -159,6 +281,7 @@
           endpoint: '/ws/live',
           onProactiveAlert: (a) => {
             el('alert-banner').textContent = `Incoming memo from ${a.source}: ${a.summary}`;
+            el('alert-banner').hidden = false;
           },
           onToolCall: () => void refreshActions(),
         });
@@ -187,6 +310,24 @@
       };
 
       void refreshActions();
+
+      // ── 2. Lustrous-Aligned Light / Dark / System Theme Toggle ────────────
+      const THEME_KEY = 'livebridge.pocket-briefing.theme';
+      const applyTheme = (pref) => {
+        document.documentElement.dataset.theme = pref;
+        try { localStorage.setItem(THEME_KEY, pref); } catch {}
+        document.querySelectorAll('[data-theme-choice]').forEach((btn) => {
+          btn.setAttribute('aria-pressed', String(btn.dataset.themeChoice === pref));
+        });
+      };
+      try {
+        applyTheme(localStorage.getItem(THEME_KEY) || 'system');
+      } catch {
+        applyTheme('system');
+      }
+      document.querySelectorAll('[data-theme-choice]').forEach((btn) => {
+        btn.addEventListener('click', () => applyTheme(btn.dataset.themeChoice || 'system'));
+      });
     </script>
   </body>
 </html>

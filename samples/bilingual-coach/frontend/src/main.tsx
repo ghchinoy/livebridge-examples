@@ -13,9 +13,36 @@
 // limitations under the License.
 
 import { PRESET_AVATARS, type LiveSessionMode } from '@ghchinoy/livebridge';
-import { StrictMode, useRef, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useLiveSession } from './useLiveSession';
+import '@ghchinoy/lustrous-lit/fonts.css';
+import '@ghchinoy/lustrous-lit/theme.css';
+import '@ghchinoy/lustrous-lit/components/lustrous-badge';
+import '@ghchinoy/lustrous-lit/components/lustrous-banner';
+import '@ghchinoy/lustrous-lit/components/lustrous-box';
+import '@ghchinoy/lustrous-lit/components/lustrous-button';
+import '@ghchinoy/lustrous-lit/components/lustrous-flex';
+import '@ghchinoy/lustrous-lit/components/lustrous-progress-bar';
+import '@ghchinoy/lustrous-lit/components/lustrous-prose-text';
+import '@ghchinoy/lustrous-lit/components/lustrous-scrollable-box';
+import type { LustrousScrollableBox } from '@ghchinoy/lustrous-lit/components/lustrous-scrollable-box';
+import '@ghchinoy/lustrous-lit/components/lustrous-segmented-control';
+import type { LustrousSegmentOption } from '@ghchinoy/lustrous-lit/components/lustrous-segmented-control';
+import '@ghchinoy/lustrous-lit/components/lustrous-select';
+import type { LustrousSelectOption } from '@ghchinoy/lustrous-lit/components/lustrous-select';
+import '@ghchinoy/lustrous-lit/components/lustrous-text';
+import '@ghchinoy/lustrous-lit/components/lustrous-text-input';
+import type { LustrousTextInput } from '@ghchinoy/lustrous-lit/components/lustrous-text-input';
+import '@ghchinoy/lustrous-lit/components/lustrous-togglable-button';
+import {
+  readLustrousThemePreference,
+  setLustrousTheme,
+  type LustrousThemePreference,
+} from '@ghchinoy/lustrous-lit/theme';
+import './styles.css';
+
+// ── 1. Livebridge Session, Scenario & Rubric Wiring ─────────────────────────
 
 interface Scenario {
   id: string;
@@ -41,7 +68,8 @@ const SCENARIOS: Scenario[] = [
     languageCode: 'es-US',
     voice: 'Aoede',
     phrases: ['habitación', 'equipaje', 'desayuno incluido', 'salida tardía'],
-    welcome: '¡Buenas tardes! Bienvenido al Hotel Sol. ¿Tiene una reservación?',
+    welcome:
+      '¡Buenas tardes! Bienvenido al Hotel Sol. ¿Tiene una reservación?',
     instruction:
       'Roleplay in Spanish as a friendly Madrid hotel receptionist. Keep turns to 1-2 sentences and call score_turn after each user reply with constructive Spanish phrasing tips.',
   },
@@ -68,6 +96,29 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+// ── 2. Lustrous UI Presentation ─────────────────────────────────────────────
+
+const THEME_STORAGE_KEY = 'livebridge.bilingual-coach.theme';
+
+const SCENARIO_OPTIONS: readonly LustrousSelectOption[] = SCENARIOS.map(
+  (s) => ({ value: s.id, label: s.title }),
+);
+
+const MODE_OPTIONS: readonly LustrousSelectOption[] = [
+  { value: 'audio', label: 'Voice Only (24 kHz PCM)' },
+  { value: 'avatar', label: 'Talking Avatar (fMP4)' },
+];
+
+const AVATAR_OPTIONS: readonly LustrousSelectOption[] = PRESET_AVATARS.map(
+  (a) => ({ value: a, label: `Avatar: ${a}` }),
+);
+
+const THEME_OPTIONS: readonly LustrousSegmentOption[] = [
+  { value: 'system', label: 'System', icon: 'modeAuto' },
+  { value: 'light', label: 'Light', icon: 'lightMode' },
+  { value: 'dark', label: 'Dark', icon: 'darkMode' },
+];
+
 function CoachApp() {
   const {
     session,
@@ -86,11 +137,25 @@ function CoachApp() {
   const [silenceMs, setSilenceMs] = useState(1100);
   const [prompt, setPrompt] = useState('');
   const [rubrics, setRubrics] = useState<RubricEntry[]>([]);
+  const [themePref, setThemePref] = useState<LustrousThemePreference>(() =>
+    readLustrousThemePreference(THEME_STORAGE_KEY, 'system'),
+  );
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const transcriptBoxRef = useRef<LustrousScrollableBox | null>(null);
+
+  useEffect(() => {
+    setLustrousTheme(themePref, { storageKey: THEME_STORAGE_KEY });
+  }, [themePref]);
+
+  useEffect(() => {
+    const scroller = transcriptBoxRef.current?.scrollElement;
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+  }, [transcript]);
 
   const scenario =
     SCENARIOS.find((s) => s.id === scenarioId) ?? SCENARIOS[0];
   const active = isConnected && !isTerminating;
+  const statusTone = active ? 'positive' : isTerminating ? 'warning' : 'default';
 
   const handleStart = async () => {
     session.lastWarning = '';
@@ -126,284 +191,320 @@ function CoachApp() {
     });
   };
 
+  const sendPrompt = () => {
+    if (session.sendText(prompt)) setPrompt('');
+  };
+
   return (
-    <div
-      style={{
-        maxWidth: 1180,
-        margin: '0 auto',
-        padding: '1.25rem',
-        display: 'grid',
-        gridTemplateColumns: '1fr 370px',
-        gap: '1.1rem',
-      }}
+    <lustrous-flex
+      direction="column"
+      gap="l"
+      padding="l"
+      mobile-padding="m"
+      max-width="1240"
+      margin-inline="auto"
     >
-      <section style={cardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <strong>Bilingual &amp; Interview Coach (React 19)</strong>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{status}</span>
-        </div>
+      <lustrous-flex align="center" justify="space-between" gap="m" wrap="wrap">
+        <lustrous-flex align="center" gap="s" wrap="wrap">
+          <lustrous-text variant="headline-medium" heading="1">
+            Bilingual &amp; Interview Coach
+          </lustrous-text>
+          <lustrous-badge tone="cobalt">React 19</lustrous-badge>
+          <lustrous-badge tone={statusTone}>{status}</lustrous-badge>
+        </lustrous-flex>
 
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <select
-            value={scenarioId}
-            disabled={isConnected}
-            onChange={(e) => setScenarioId(e.target.value)}
-            style={inputStyle}
-          >
-            {SCENARIOS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </select>
+        <lustrous-segmented-control
+          size="s"
+          label="Color theme"
+          value={themePref}
+          options={THEME_OPTIONS}
+          onlustrous-change={(e) =>
+            setThemePref(
+              (e.detail.value ?? 'system') as LustrousThemePreference,
+            )
+          }
+        />
+      </lustrous-flex>
 
-          <select
-            value={mode}
-            disabled={isConnected}
-            onChange={(e) => setMode(e.target.value as LiveSessionMode)}
-            style={inputStyle}
-          >
-            <option value="audio">Voice Only (24 kHz PCM)</option>
-            <option value="avatar">Talking Avatar (fMP4)</option>
-          </select>
+      <div className="coach-grid">
+        <lustrous-flex
+          direction="column"
+          gap="m"
+          padding="l"
+          background="surface-bright"
+          border
+          border-radius="xl"
+          shadow="1"
+        >
+          <lustrous-flex wrap="wrap" gap="s">
+            <lustrous-flex-item grow="1" min-width="240px">
+              <lustrous-select
+                label="Practice scenario"
+                size="s"
+                value={scenarioId}
+                options={SCENARIO_OPTIONS}
+                disabled={isConnected}
+                onlustrous-change={(e) =>
+                  setScenarioId(e.detail.value ?? SCENARIOS[0].id)
+                }
+              />
+            </lustrous-flex-item>
+
+            <lustrous-select
+              label="Session mode"
+              size="s"
+              value={mode}
+              options={MODE_OPTIONS}
+              disabled={isConnected}
+              onlustrous-change={(e) =>
+                setMode((e.detail.value ?? 'audio') as LiveSessionMode)
+              }
+            />
+
+            {mode === 'avatar' && (
+              <lustrous-select
+                label="Preset avatar"
+                size="s"
+                value={avatarPreset}
+                options={AVATAR_OPTIONS}
+                disabled={isConnected}
+                onlustrous-change={(e) =>
+                  setAvatarPreset(e.detail.value ?? 'Kira')
+                }
+              />
+            )}
+          </lustrous-flex>
+
+          {lastWarning && (
+            <lustrous-banner
+              variant="warning"
+              icon="warning"
+              layout="row"
+              description={lastWarning}
+            />
+          )}
+
+          <lustrous-flex direction="column" gap="xs">
+            <lustrous-flex align="center" justify="space-between" gap="s">
+              <lustrous-text variant="body-small" muted>
+                VAD Learner Pause Patience (<code>SilenceDurationMs</code>)
+              </lustrous-text>
+              <lustrous-badge tone="accent">{silenceMs} ms</lustrous-badge>
+            </lustrous-flex>
+            <input
+              className="vad-slider"
+              type="range"
+              aria-label="VAD learner pause patience in milliseconds"
+              min={400}
+              max={1800}
+              step={100}
+              value={silenceMs}
+              disabled={isConnected}
+              onChange={(e) => setSilenceMs(Number(e.target.value))}
+            />
+          </lustrous-flex>
+
+          <lustrous-flex wrap="wrap" gap="s" align="center">
+            <lustrous-button
+              variant="accent"
+              size="s"
+              icon="play"
+              disabled={isConnected || isTerminating}
+              onClick={() => void handleStart()}
+            >
+              Start Practice
+            </lustrous-button>
+            <lustrous-togglable-button
+              size="s"
+              icon={isRecording ? 'mic' : 'micOff'}
+              selected={isRecording}
+              disabled={!active}
+              onlustrous-change={(e) => {
+                e.preventDefault();
+                void session.toggleMic();
+              }}
+            >
+              {isRecording ? 'Mute Mic' : 'Unmute Mic'}
+            </lustrous-togglable-button>
+            <lustrous-button
+              variant="outline"
+              size="s"
+              icon="stop"
+              disabled={!active}
+              onClick={() => session.terminate()}
+            >
+              End Session
+            </lustrous-button>
+            <lustrous-flex-item grow="1" min-width="120px">
+              <lustrous-progress-bar
+                value={Math.min(100, Math.round(micRms * 260))}
+                tone="accent"
+                label="Microphone input level"
+                decorative
+              />
+            </lustrous-flex-item>
+          </lustrous-flex>
 
           {mode === 'avatar' && (
-            <select
-              value={avatarPreset}
-              disabled={isConnected}
-              onChange={(e) => setAvatarPreset(e.target.value)}
-              style={inputStyle}
+            <lustrous-box
+              width="220"
+              data-theme="dark"
+              background="surface-dim"
+              border
+              border-radius="l"
+              overflow="hidden"
             >
-              {PRESET_AVATARS.map((a) => (
-                <option key={a} value={a}>
-                  Avatar: {a}
-                </option>
-              ))}
-            </select>
+              <video
+                ref={videoRef}
+                className="avatar-video"
+                playsInline
+                autoPlay
+              />
+            </lustrous-box>
           )}
-        </div>
 
-        {lastWarning && (
-          <div
-            style={{
-              padding: '0.55rem 0.75rem',
-              borderRadius: 8,
-              background: '#451a03',
-              border: '1px solid #b45309',
-              color: '#fde68a',
-              fontSize: '0.82rem',
-            }}
+          <lustrous-scrollable-box
+            ref={transcriptBoxRef}
+            className="transcript"
+            scrim="both"
+            label="Conversation transcript"
+            background="surface-dim"
+            border
+            border-radius="l"
+            padding="m"
+            aria-live="polite"
           >
-            {lastWarning}
-          </div>
-        )}
-
-        <label style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-          VAD Learner Pause Patience (SilenceDurationMs: {silenceMs} ms)
-          <input
-            type="range"
-            min={400}
-            max={1800}
-            step={100}
-            value={silenceMs}
-            disabled={isConnected}
-            onChange={(e) => setSilenceMs(Number(e.target.value))}
-            style={{ width: '100%' }}
-          />
-        </label>
-
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button
-            onClick={() => void handleStart()}
-            disabled={isConnected || isTerminating}
-            style={primaryBtnStyle}
-          >
-            Start Practice
-          </button>
-          <button
-            onClick={() => void session.toggleMic()}
-            disabled={!active}
-            style={btnStyle}
-          >
-            {isRecording ? 'Mute Mic' : 'Unmute Mic'}
-          </button>
-          <button
-            onClick={() => session.terminate()}
-            disabled={!active}
-            style={btnStyle}
-          >
-            End Session
-          </button>
-          <div
-            style={{
-              flex: 1,
-              height: 8,
-              background: '#030712',
-              borderRadius: 99,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${Math.min(100, Math.round(micRms * 260))}%`,
-                background: '#38bdf8',
-              }}
-            />
-          </div>
-        </div>
-
-        <video
-          ref={videoRef}
-          playsInline
-          autoPlay
-          style={{
-            display: mode === 'avatar' ? 'block' : 'none',
-            width: 220,
-            borderRadius: 12,
-            background: '#000',
-          }}
-        />
-
-        <div
-          style={{
-            height: 330,
-            overflowY: 'auto',
-            background: '#030712',
-            borderRadius: 12,
-            padding: '0.85rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-          }}
-        >
-          {transcript.map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                alignSelf: item.type === 'user' ? 'flex-end' : 'flex-start',
-                background:
-                  item.type === 'user'
-                    ? '#1d4ed8'
-                    : item.type === 'tool'
-                      ? '#0f172a'
-                      : '#1e293b',
-                padding: '0.5rem 0.75rem',
-                borderRadius: 10,
-                fontSize: '0.88rem',
-                maxWidth: '88%',
-              }}
-            >
-              {item.text}
-            </div>
-          ))}
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (session.sendText(prompt)) setPrompt('');
-          }}
-          style={{ display: 'flex', gap: '0.5rem' }}
-        >
-          <input
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Or type a response in the target language..."
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <button type="submit" disabled={!active} style={btnStyle}>
-            Send
-          </button>
-        </form>
-      </section>
-
-      <aside style={cardStyle}>
-        <strong>Adaptation Phrases &amp; Live Rubric</strong>
-        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-          {scenario.phrases.map((p) => (
-            <span
-              key={p}
-              style={{
-                fontSize: '0.75rem',
-                padding: '0.25rem 0.55rem',
-                borderRadius: 99,
-                background: '#1e293b',
-                color: '#bae6fd',
-              }}
-            >
-              {p}
-            </span>
-          ))}
-        </div>
-        {rubrics.length === 0 ? (
-          <p style={{ fontSize: '0.84rem', color: '#94a3b8' }}>
-            Speak a turn—your coach will log fluency &amp; phrasing cards here via{' '}
-            <code>score_turn</code>.
-          </p>
-        ) : (
-          rubrics.map((r, i) => (
-            <div
-              key={i}
-              style={{
-                padding: '0.7rem',
-                borderRadius: 10,
-                background: '#030712',
-                border: '1px solid #1e2937',
-                fontSize: '0.85rem',
-              }}
-            >
-              <div style={{ color: '#38bdf8', fontWeight: 600 }}>
-                Fluency {r.fluency}/5 · Clarity {r.clarity}/5
-              </div>
-              <div style={{ marginTop: 4 }}>{r.betterPhrasing}</div>
-              {r.vocabTip && (
-                <div style={{ marginTop: 4, color: '#94a3b8' }}>
-                  Tip: {r.vocabTip}
-                </div>
+            <lustrous-flex direction="column" gap="s">
+              {transcript.length === 0 ? (
+                <lustrous-text variant="body-small" muted>
+                  Click <strong>Start Practice</strong> to begin the{' '}
+                  <code>{scenario.languageCode}</code> session.
+                </lustrous-text>
+              ) : (
+                transcript.map((item, idx) => (
+                  <lustrous-box
+                    key={idx}
+                    className={`turn ${item.type}`}
+                    padding="s"
+                    padding-inline="m"
+                    border-radius="m"
+                    background={
+                      item.type === 'user'
+                        ? 'primary-container'
+                        : item.type === 'tool'
+                          ? 'code'
+                          : 'surface-container'
+                    }
+                    border={item.type === 'tool'}
+                  >
+                    <lustrous-prose-text
+                      variant={item.type === 'tool' ? 'code' : 'body-medium'}
+                      language={scenario.languageCode}
+                    >
+                      {item.text}
+                    </lustrous-prose-text>
+                  </lustrous-box>
+                ))
               )}
-            </div>
-          ))
-        )}
-      </aside>
-    </div>
+            </lustrous-flex>
+          </lustrous-scrollable-box>
+
+          <lustrous-flex gap="s" align="center">
+            <lustrous-flex-item grow="1" min-width="0">
+              <lustrous-text-input
+                size="s"
+                aria-label="Reply in target language"
+                value={prompt}
+                placeholder="Or type a response in the target language..."
+                disabled={!active}
+                onInput={(e) =>
+                  setPrompt((e.currentTarget as LustrousTextInput).value)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendPrompt();
+                  }
+                }}
+              />
+            </lustrous-flex-item>
+            <lustrous-button
+              size="s"
+              icon="send"
+              disabled={!active}
+              onClick={sendPrompt}
+            >
+              Send
+            </lustrous-button>
+          </lustrous-flex>
+        </lustrous-flex>
+
+        <lustrous-flex
+          direction="column"
+          gap="m"
+          padding="l"
+          background="surface-bright"
+          border
+          border-radius="xl"
+          shadow="1"
+        >
+          <lustrous-text variant="headline-small" heading="2">
+            Adaptation Phrases &amp; Rubric
+          </lustrous-text>
+
+          <lustrous-flex wrap="wrap" gap="xs">
+            {scenario.phrases.map((p) => (
+              <lustrous-badge key={p} tone="teal">
+                {p}
+              </lustrous-badge>
+            ))}
+          </lustrous-flex>
+
+          {rubrics.length === 0 ? (
+            <lustrous-text variant="body-small" muted>
+              Speak a turn—your coach will log fluency &amp; phrasing cards here
+              via <code>score_turn</code>.
+            </lustrous-text>
+          ) : (
+            <lustrous-flex direction="column" gap="s">
+              {rubrics.map((r, i) => (
+                <lustrous-box
+                  key={i}
+                  padding="m"
+                  background="surface-container"
+                  border
+                  border-radius="l"
+                >
+                  <lustrous-flex direction="column" gap="xs">
+                    <lustrous-flex gap="xs" wrap="wrap">
+                      <lustrous-badge tone="emerald">
+                        Fluency {r.fluency}/5
+                      </lustrous-badge>
+                      <lustrous-badge tone="cobalt">
+                        Clarity {r.clarity}/5
+                      </lustrous-badge>
+                    </lustrous-flex>
+                    <lustrous-prose-text
+                      variant="body-medium"
+                      language={scenario.languageCode}
+                    >
+                      {r.betterPhrasing}
+                    </lustrous-prose-text>
+                    {r.vocabTip && (
+                      <lustrous-text variant="body-small" muted>
+                        Tip: {r.vocabTip}
+                      </lustrous-text>
+                    )}
+                  </lustrous-flex>
+                </lustrous-box>
+              ))}
+            </lustrous-flex>
+          )}
+        </lustrous-flex>
+      </div>
+    </lustrous-flex>
   );
 }
-
-const cardStyle: React.CSSProperties = {
-  background: '#111827',
-  border: '1px solid #1f2937',
-  borderRadius: 16,
-  padding: '1.1rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.8rem',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '0.48rem 0.75rem',
-  borderRadius: 8,
-  border: '1px solid #334155',
-  background: '#030712',
-  color: '#f8fafc',
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: '0.48rem 0.9rem',
-  borderRadius: 999,
-  border: '1px solid #334155',
-  background: '#1e293b',
-  color: '#f8fafc',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-  ...btnStyle,
-  background: '#38bdf8',
-  color: '#082f49',
-  borderColor: 'transparent',
-};
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

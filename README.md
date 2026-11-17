@@ -77,7 +77,7 @@ Use `./run.sh` to start any sample's Go backend and Vite dev server together wit
 
 ## Sample Catalog
 
-Every sample has its own standalone `go.mod` importing `github.com/ghchinoy/livebridge v0.1.1` from `proxy.golang.org` and `package.json` importing `@ghchinoy/livebridge@^0.1.1` from npm:
+Every sample has its own standalone `go.mod` importing `github.com/ghchinoy/livebridge v0.1.1` from `proxy.golang.org` and `package.json` importing `@ghchinoy/livebridge@^0.1.1` from npm (paired with [`@ghchinoy/lustrous-lit`](https://github.com/ghchinoy/lustrous-lit) for consistent WCAG 2.1 AA light/dark/system UI across the Vite frontends, and matching `@layer lustrous` CSS tokens in the zero-Node Go sample):
 
 | Sample | URL / Ports | Frontend Stack | Key `livebridge` Capabilities Proven |
 | :--- | :--- | :--- | :--- |

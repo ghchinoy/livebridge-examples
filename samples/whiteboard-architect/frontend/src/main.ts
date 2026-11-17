@@ -18,6 +18,36 @@ import {
   WebmcpToolError,
   WebmcpToolHost,
 } from '@ghchinoy/livebridge';
+import '@ghchinoy/lustrous-lit/fonts.css';
+import '@ghchinoy/lustrous-lit/theme.css';
+import '@ghchinoy/lustrous-lit/components/lustrous-badge';
+import type { LustrousBadge } from '@ghchinoy/lustrous-lit/components/lustrous-badge';
+import '@ghchinoy/lustrous-lit/components/lustrous-banner';
+import type { LustrousBanner } from '@ghchinoy/lustrous-lit/components/lustrous-banner';
+import '@ghchinoy/lustrous-lit/components/lustrous-box';
+import '@ghchinoy/lustrous-lit/components/lustrous-button';
+import type { LustrousButton } from '@ghchinoy/lustrous-lit/components/lustrous-button';
+import '@ghchinoy/lustrous-lit/components/lustrous-flex';
+import '@ghchinoy/lustrous-lit/components/lustrous-scrollable-box';
+import type { LustrousScrollableBox } from '@ghchinoy/lustrous-lit/components/lustrous-scrollable-box';
+import '@ghchinoy/lustrous-lit/components/lustrous-segmented-control';
+import type { LustrousSegmentedControl } from '@ghchinoy/lustrous-lit/components/lustrous-segmented-control';
+import '@ghchinoy/lustrous-lit/components/lustrous-text';
+import '@ghchinoy/lustrous-lit/components/lustrous-text-input';
+import type { LustrousTextInput } from '@ghchinoy/lustrous-lit/components/lustrous-text-input';
+import '@ghchinoy/lustrous-lit/components/lustrous-togglable-button';
+import type { LustrousTogglableButton } from '@ghchinoy/lustrous-lit/components/lustrous-togglable-button';
+import {
+  darkColors,
+  lightColors,
+  readLustrousThemePreference,
+  resolveLustrousTheme,
+  setLustrousTheme,
+  type LustrousChangeEvent,
+  type LustrousThemePreference,
+} from '@ghchinoy/lustrous-lit/theme';
+
+// ── 1. Livebridge WebMCP Host, Session & Canvas Wiring ──────────────────────
 
 interface DiagramNode {
   id: string;
@@ -49,6 +79,23 @@ const strokes: Point[][] = [];
 let activeStroke: Point[] | null = null;
 let revision = 0;
 
+function activePalette() {
+  const isDark = resolveLustrousTheme(document.documentElement) === 'dark';
+  const c = isDark ? darkColors : lightColors;
+  return {
+    surfaceDim: c['surface-dim'] ?? (isDark ? '#0d131f' : '#f1f5f9'),
+    surfaceBright: c['surface-bright'] ?? (isDark ? '#1f2937' : '#ffffff'),
+    outlineVariant: c['outline-variant'] ?? (isDark ? '#334155' : '#cbd5e1'),
+    outline: c.outline ?? (isDark ? '#8496ae' : '#64748b'),
+    onSurfaceVariant:
+      c['on-surface-variant'] ?? (isDark ? '#94a3b8' : '#475569'),
+    onSurface: c['on-surface'] ?? (isDark ? '#f1f5f9' : '#0f172a'),
+    warning: c.warning ?? (isDark ? '#fbbf24' : '#b45309'),
+    accent: c.accent ?? (isDark ? '#60a5fa' : '#1d4ed8'),
+    tertiary: c.tertiary ?? (isDark ? '#5eead4' : '#0f766e'),
+  };
+}
+
 function boundedText(
   value: unknown,
   field: string,
@@ -69,12 +116,13 @@ function boundedText(
 }
 
 function renderBoardAndSnapshot(): string {
-  boardCtx.fillStyle = '#030712';
+  const c = activePalette();
+  boardCtx.fillStyle = c.surfaceDim;
   boardCtx.fillRect(0, 0, board.width, board.height);
 
   // Subtle grid
-  boardCtx.strokeStyle = '#0f172a';
-  boardCtx.lineWidth = 1;
+  boardCtx.strokeStyle = c.outlineVariant;
+  boardCtx.lineWidth = 0.6;
   for (let x = 32; x < board.width; x += 32) {
     boardCtx.beginPath();
     boardCtx.moveTo(x, 0);
@@ -93,14 +141,14 @@ function renderBoardAndSnapshot(): string {
     const a = nodes.get(edge.from);
     const b = nodes.get(edge.to);
     if (!a || !b) continue;
-    boardCtx.strokeStyle = '#64748b';
+    boardCtx.strokeStyle = c.outline;
     boardCtx.lineWidth = 2;
     boardCtx.beginPath();
     boardCtx.moveTo(a.x, a.y);
     boardCtx.lineTo(b.x, b.y);
     boardCtx.stroke();
     if (edge.label) {
-      boardCtx.fillStyle = '#94a3b8';
+      boardCtx.fillStyle = c.onSurfaceVariant;
       boardCtx.font = '11px ui-monospace, monospace';
       boardCtx.textAlign = 'center';
       boardCtx.fillText(edge.label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 6);
@@ -109,22 +157,22 @@ function renderBoardAndSnapshot(): string {
 
   // Nodes
   for (const node of nodes.values()) {
-    boardCtx.fillStyle = '#111827';
-    boardCtx.strokeStyle = node.highlighted ? '#f59e0b' : '#38bdf8';
+    boardCtx.fillStyle = c.surfaceBright;
+    boardCtx.strokeStyle = node.highlighted ? c.warning : c.accent;
     boardCtx.lineWidth = node.highlighted ? 3 : 2;
     boardCtx.beginPath();
     boardCtx.roundRect(node.x - 68, node.y - 26, 136, 52, 10);
     boardCtx.fill();
     boardCtx.stroke();
 
-    boardCtx.fillStyle = '#f8fafc';
-    boardCtx.font = 'bold 13px ui-sans-serif, system-ui, sans-serif';
+    boardCtx.fillStyle = c.onSurface;
+    boardCtx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
     boardCtx.textAlign = 'center';
     boardCtx.fillText(node.label, node.x, node.y + 4);
   }
 
   // User freehand ink strokes
-  boardCtx.strokeStyle = '#a78bfa';
+  boardCtx.strokeStyle = c.tertiary;
   boardCtx.lineWidth = 2.5;
   boardCtx.lineCap = 'round';
   for (const stroke of strokes) {
@@ -337,7 +385,8 @@ board.addEventListener('pointerup', () => {
 // 60 FPS Audio-Reactive AnalyserNode spectrum loop (keeps animating even when muted!)
 const freqBins = new Uint8Array(64);
 function drawSpectrum(): void {
-  specCtx.fillStyle = '#030712';
+  const c = activePalette();
+  specCtx.fillStyle = c.surfaceDim;
   specCtx.fillRect(0, 0, spectrum.width, spectrum.height);
   const analyser = session.pcmPlayer.analyser;
   if (analyser) {
@@ -345,44 +394,107 @@ function drawSpectrum(): void {
     const barW = spectrum.width / 32;
     for (let i = 0; i < 32; i++) {
       const h = (freqBins[i] / 255) * (spectrum.height - 6);
-      specCtx.fillStyle = session.isMuted ? '#64748b' : '#38bdf8';
+      specCtx.fillStyle = session.isMuted ? c.outline : c.accent;
       specCtx.fillRect(i * barW + 2, spectrum.height - h - 2, barW - 4, h);
     }
   }
   requestAnimationFrame(drawSpectrum);
 }
+
+// ── 2. Lustrous UI Presentation ─────────────────────────────────────────────
+
+const THEME_STORAGE_KEY = 'livebridge.whiteboard-architect.theme';
+const initialTheme = readLustrousThemePreference(THEME_STORAGE_KEY, 'system');
+setLustrousTheme(initialTheme, { storageKey: THEME_STORAGE_KEY });
+
+const themeToggle = $<LustrousSegmentedControl>('theme-toggle');
+themeToggle.options = [
+  { value: 'system', label: 'System', icon: 'modeAuto' },
+  { value: 'light', label: 'Light', icon: 'lightMode' },
+  { value: 'dark', label: 'Dark', icon: 'darkMode' },
+];
+themeToggle.value = initialTheme;
+themeToggle.addEventListener('lustrous-change', (ev) => {
+  const pref = ((ev as LustrousChangeEvent).detail.value ??
+    'system') as LustrousThemePreference;
+  setLustrousTheme(pref, { storageKey: THEME_STORAGE_KEY });
+  renderBoardAndSnapshot();
+});
+
+window
+  .matchMedia('(prefers-color-scheme: dark)')
+  .addEventListener('change', () => renderBoardAndSnapshot());
+
 renderBoardAndSnapshot();
 drawSpectrum();
 
+const statusBadge = $<LustrousBadge>('status');
+const warningBanner = $<LustrousBanner>('warning-banner');
+const startBtn = $<LustrousButton>('start-btn');
+const micBtn = $<LustrousTogglableButton>('mic-btn');
+const muteBtn = $<LustrousTogglableButton>('mute-btn');
+const endBtn = $<LustrousButton>('end-btn');
+const sendBtn = $<LustrousButton>('send-btn');
+const promptInput = $<LustrousTextInput>('prompt-input');
+const transcriptBox = $<LustrousScrollableBox>('transcript-box');
+const transcriptList = $('transcript');
+
 session.addEventListener('change', () => {
   const active = session.isConnected && !session.isTerminating;
-  $('status').textContent = session.status;
-  $<HTMLButtonElement>('start-btn').disabled =
-    session.isConnected || session.isTerminating;
-  $<HTMLButtonElement>('mic-btn').disabled = !active;
-  $<HTMLButtonElement>('mic-btn').textContent = session.isRecording
-    ? 'Mute Mic'
-    : 'Unmute Mic';
-  $<HTMLButtonElement>('mute-btn').disabled = !active;
-  $<HTMLButtonElement>('mute-btn').textContent = session.isMuted
-    ? 'Unmute Speaker'
-    : 'Mute Speaker';
-  $<HTMLButtonElement>('end-btn').disabled = !active;
-  $<HTMLButtonElement>('send-btn').disabled = !active;
+  statusBadge.textContent = session.status;
+  statusBadge.tone = active
+    ? 'positive'
+    : session.isTerminating
+      ? 'warning'
+      : 'default';
 
-  const pane = $('transcript');
-  pane.replaceChildren(
+  warningBanner.hidden = !session.lastWarning;
+  warningBanner.description = session.lastWarning;
+
+  startBtn.disabled = session.isConnected || session.isTerminating;
+  micBtn.disabled = !active;
+  micBtn.selected = session.isRecording;
+  micBtn.icon = session.isRecording ? 'mic' : 'micOff';
+  micBtn.textContent = session.isRecording ? 'Mute Mic' : 'Unmute Mic';
+
+  muteBtn.disabled = !active;
+  muteBtn.selected = session.isMuted;
+  muteBtn.icon = session.isMuted ? 'volumeOff' : 'volumeUp';
+  muteBtn.textContent = session.isMuted ? 'Unmute Speaker' : 'Mute Speaker';
+
+  endBtn.disabled = !active;
+  sendBtn.disabled = !active;
+  promptInput.disabled = !active;
+
+  transcriptList.replaceChildren(
     ...session.transcript.map((t) => {
-      const div = document.createElement('div');
-      div.className = `turn ${t.type}`;
-      div.textContent = t.text;
-      return div;
+      const box = document.createElement('lustrous-box');
+      box.className = `turn ${t.type}`;
+      box.setAttribute('padding', 's');
+      box.setAttribute('padding-inline', 'm');
+      box.setAttribute('border-radius', 'm');
+      box.setAttribute(
+        'background',
+        t.type === 'user'
+          ? 'primary-container'
+          : t.type === 'tool'
+            ? 'code'
+            : 'surface-container',
+      );
+      if (t.type === 'tool') box.setAttribute('border', '');
+      const text = document.createElement('lustrous-text');
+      text.setAttribute('variant', t.type === 'tool' ? 'code' : 'body-medium');
+      text.textContent = t.text;
+      box.append(text);
+      return box;
     }),
   );
-  pane.scrollTop = pane.scrollHeight;
+  const scroller = transcriptBox.scrollElement;
+  if (scroller) scroller.scrollTop = scroller.scrollHeight;
 });
 
-$('start-btn').onclick = () =>
+startBtn.addEventListener('click', () => {
+  session.lastWarning = '';
   void session.connect({
     endpoint: '/ws/live',
     advertisePageTools: true,
@@ -393,20 +505,35 @@ $('start-btn').onclick = () =>
       }
     },
   });
+});
 
-$('mic-btn').onclick = () => void session.toggleMic();
-$('mute-btn').onclick = () => session.toggleMute();
-$('end-btn').onclick = () => session.terminate();
-$('clear-btn').onclick = () => {
+micBtn.addEventListener('lustrous-change', (e) => {
+  e.preventDefault();
+  void session.toggleMic();
+});
+muteBtn.addEventListener('lustrous-change', (e) => {
+  e.preventDefault();
+  session.toggleMute();
+});
+endBtn.addEventListener('click', () => session.terminate());
+$('clear-btn').addEventListener('click', () => {
   nodes.clear();
   edges.length = 0;
   strokes.length = 0;
   revision++;
   renderBoardAndSnapshot();
-};
+});
 
-$<HTMLFormElement>('prompt-form').onsubmit = (e) => {
-  e.preventDefault();
-  const input = $<HTMLInputElement>('prompt-input');
-  if (session.sendText(input.value)) input.value = '';
-};
+function submitPrompt(): void {
+  if (session.sendText(promptInput.value)) {
+    promptInput.value = '';
+  }
+}
+
+sendBtn.addEventListener('click', submitPrompt);
+promptInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitPrompt();
+  }
+});

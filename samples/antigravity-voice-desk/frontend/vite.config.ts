@@ -15,6 +15,9 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  resolve: {
+    dedupe: ['lit'],
+  },
   server: {
     port: 5185,
     proxy: {

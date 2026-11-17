@@ -2,6 +2,8 @@
 
 Single-binary Go voice briefing desk importing `github.com/ghchinoy/livebridge v0.1.0` and `github.com/ghchinoy/livebridge/browser` with **zero Node.js or bundler dependencies**.
 
+> **Architecture note:** `index.html` stays 100% Node-free (embedded via `//go:embed`) while aligning its `@layer lustrous` CSS custom properties with the light/dark/system palette used across the Vite-based samples.
+
 - **`./inbox/` Watcher + Webhook `AlertBus`:** Watches `./inbox/*.{md,txt}` every 2 seconds and accepts `POST /api/memo` webhooks, framing untrusted text with `FormatUntrustedAlert` and playing warm Web Audio cues via `ChimeSynth` (`soft` / `subtle` / `off`).
 - **Action Item Capture (`save_action_item`):** Spoken follow-up tasks are logged via `FuncRegistry` and displayed live in the sidebar.
 

@@ -2,6 +2,8 @@
 
 Pairs a **stateless `livebridge` voice/avatar edge (`gemini-3.8-live`)** with an isolated **[Gemini Managed Agents](https://aistudio.google.com/docs/managed-agents-quickstart) Linux sandbox (`antigravity-preview-09-2026`)** using `google.golang.org/genai/interactions`.
 
+> **Architecture note:** `@ghchinoy/livebridge` + `@ghchinoy/livebridge/lit` (`LiveSessionController`) drive all voice/avatar, `AlertBus` chime, and sandbox SSE wiring at the top of `frontend/src/app.ts`; [`@ghchinoy/lustrous-lit`](https://github.com/ghchinoy/lustrous-lit) provides the accessible Lit 3 UI primitives (`<lustrous-timeline>`, `<lustrous-code-block>`, `<lustrous-photo-lightbox>`, and light/dark/system theming).
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../docs/assets/managed-agents-split-dark.webp">
   <img alt="Fast voice edge paired with Gemini Managed Agents sandbox" src="../../docs/assets/managed-agents-split-light.webp">

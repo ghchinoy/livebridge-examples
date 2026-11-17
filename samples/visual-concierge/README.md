@@ -2,6 +2,8 @@
 
 Pairs a talking Gemini Live video avatar (`Kira`, `Aoede`, `Puck`, `Kore`, or a custom uploaded portrait cropped via `prepareAvatarImage`) with 1 FPS webcam/screen-share `VisionCapture` and a live troubleshooting checklist drawer (`upsert_checklist`).
 
+> **Architecture note:** `@ghchinoy/livebridge` + `@ghchinoy/livebridge/lit` (`LiveSessionController`) drive all session, media, and tool behavior at the top of `frontend/src/app.ts`; [`@ghchinoy/lustrous-lit`](https://github.com/ghchinoy/lustrous-lit) provides the accessible Lit 3 UI primitives and light/dark/system theming.
+
 ## Run
 
 ```bash

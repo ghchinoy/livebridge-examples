@@ -115,6 +115,10 @@ if [[ -z "${GOOGLE_CLOUD_PROJECT:-}" && -z "${GEMINI_API_KEY:-}" ]]; then
   exit 1
 fi
 
+if [[ "${SAMPLE}" == "antigravity-voice-desk" && -z "${GEMINI_API_KEY:-}" && -z "${GOOGLE_API_KEY:-}" ]]; then
+  warn "GEMINI_API_KEY is not set; Antigravity Managed Agents and chart downloads require GEMINI_API_KEY (GOOGLE_CLOUD_PROJECT only covers the voice/avatar edge)."
+fi
+
 PIDS=()
 cleanup() {
   for pid in "${PIDS[@]:-}"; do

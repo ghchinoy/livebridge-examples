@@ -1,0 +1,42 @@
+.coach-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--lustrous-space-l);
+  align-items: start;
+}
+
+@media (max-width: 1020px) {
+  .coach-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vad-slider {
+  width: 100%;
+  accent-color: var(--lustrous-color-accent);
+  cursor: pointer;
+}
+
+.avatar-video {
+  width: 100%;
+  display: block;
+  border-radius: var(--lustrous-radius-m);
+}
+
+.transcript {
+  height: 330px;
+}
+
+.turn {
+  max-width: 88%;
+  align-self: flex-start;
+}
+
+.turn.user {
+  align-self: flex-end;
+}
+
+.turn.tool {
+  max-width: 100%;
+  align-self: stretch;
+}
