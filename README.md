@@ -2,7 +2,7 @@
 
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](https://github.com/ghchinoy/livebridge)
 [![npm @ghchinoy/livebridge](https://img.shields.io/npm/v/@ghchinoy/livebridge?logo=npm&color=CB3837)](https://www.npmjs.com/package/@ghchinoy/livebridge)
-[![livebridge v0.1.2](https://img.shields.io/badge/livebridge-v0.1.2-3178C6)](https://github.com/ghchinoy/livebridge/releases/tag/v0.1.2)
+[![livebridge v0.1.3](https://img.shields.io/badge/livebridge-v0.1.3-3178C6)](https://github.com/ghchinoy/livebridge/releases/tag/v0.1.3)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Multi-framework external showcase and release-canary applications built on [`github.com/ghchinoy/livebridge`](https://github.com/ghchinoy/livebridge) and [`@ghchinoy/livebridge`](https://www.npmjs.com/package/@ghchinoy/livebridge) across **Lit 3**, **Vanilla TypeScript**, **React 19**, **Zero-Node Go**, and **[Gemini Managed Agents](https://aistudio.google.com/docs/managed-agents-quickstart)**—consuming the published packages directly from `proxy.golang.org` and `npmjs.com` with zero `go.work` or `replace` directives.
@@ -77,7 +77,7 @@ Use `./run.sh` to start any sample's Go backend and Vite dev server together wit
 
 ## Sample Catalog
 
-Every sample has its own standalone `go.mod` importing `github.com/ghchinoy/livebridge v0.1.2` from `proxy.golang.org` and `package.json` importing `@ghchinoy/livebridge@^0.1.2` from npm (paired with [`@ghchinoy/lustrous-lit`](https://github.com/ghchinoy/lustrous-lit) for consistent WCAG 2.1 AA light/dark/system UI across the Vite frontends, and matching `@layer lustrous` CSS tokens in the zero-Node Go sample):
+Every sample has its own standalone `go.mod` importing `github.com/ghchinoy/livebridge v0.1.3` from `proxy.golang.org` and `package.json` importing `@ghchinoy/livebridge@^0.1.2` from npm (paired with [`@ghchinoy/lustrous-lit`](https://github.com/ghchinoy/lustrous-lit) for consistent WCAG 2.1 AA light/dark/system UI across the Vite frontends, and matching `@layer lustrous` CSS tokens in the zero-Node Go sample):
 
 | Sample | URL / Ports | Frontend Stack | Key `livebridge` Capabilities Proven |
 | :--- | :--- | :--- | :--- |
