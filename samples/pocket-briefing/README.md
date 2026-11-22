@@ -1,6 +1,6 @@
 # Pocket Briefing (Zero-Node Single-Binary Go + `livebridge/browser`)
 
-Single-binary Go voice briefing desk importing `github.com/ghchinoy/livebridge v0.1.0` and `github.com/ghchinoy/livebridge/browser` with **zero Node.js or bundler dependencies**.
+Single-binary Go voice briefing desk importing `github.com/ghchinoy/livebridge v0.1.2` and `github.com/ghchinoy/livebridge/browser` with **zero Node.js or bundler dependencies**.
 
 > **Architecture note:** `index.html` stays 100% Node-free (embedded via `//go:embed`) while aligning its `@layer lustrous` CSS custom properties with the light/dark/system palette used across the Vite-based samples.
 

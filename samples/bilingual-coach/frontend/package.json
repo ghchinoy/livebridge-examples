@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ghchinoy/livebridge": "^0.1.1",
+    "@ghchinoy/livebridge": "^0.1.2",
     "@ghchinoy/lustrous-lit": "^0.1.0",
     "lit": "^3.3.3",
     "react": "^19.2.0",
