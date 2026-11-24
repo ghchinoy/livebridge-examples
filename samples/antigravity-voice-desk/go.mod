@@ -3,7 +3,7 @@ module antigravity-voice-desk
 go 1.26.10
 
 require (
-	github.com/ghchinoy/livebridge v0.1.3
+	github.com/ghchinoy/livebridge v0.1.4
 	github.com/gorilla/websocket v1.5.3
 	google.golang.org/genai v1.79.1
 )
